@@ -41,6 +41,9 @@ export default function Home() {
   const [selectedOpportunityTypes, setSelectedOpportunityTypes] = useState([]);
   const [search, setSearch] = useState("");
   const [modalOpp, setModalOpp] = useState(null);
+  const [sortKey, setSortKey] = useState('date'); // e.g. 'name', 'organization', 'date'
+  const [sortDirection, setSortDirection] = useState("asc");
+
 
   // Dropdown options
   const industryOptions = [
@@ -145,6 +148,38 @@ export default function Home() {
     ? filteredOpportunities.filter(opp => favorites.includes(opp.id))
     : filteredOpportunities;
 
+
+
+  //Sorted Lists
+  const sortedOpportunities = [...opportunitiesToDisplay].sort((a, b) => {
+    if (!sortKey) return 0; // No sort
+    let valA = a[sortKey];
+    let valB = b[sortKey];
+
+    // For date, convert to Date object
+    if (sortKey === "date") {
+      valA = new Date(valA);
+      valB = new Date(valB);
+    } else {
+      valA = valA ? valA.toString().toLowerCase() : "";
+      valB = valB ? valB.toString().toLowerCase() : "";
+    }
+
+    if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+    if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
+
+  
   // UI
   return (
     <div className="bg-purple-50 min-h-screen p-4 font-segoe">
@@ -245,17 +280,35 @@ export default function Home() {
             <thead className="bg-purple-700">
               <tr>
                 <th className="px-4 py-3 text-xs font-bold text-white text-center">FAVORITE</th>
-                <th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY NAME</th>
+                {/*<th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY NAME</th>*/}
+                <th
+                  className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
+                  onClick={() => handleSort("name")}
+                >
+                  OPPORTUNITY NAME {sortKey === "name" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                </th>
                 <th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY TYPE</th> 
-                <th className="px-4 py-3 text-xs font-bold text-white">ORGANZATON</th>
+                {/* <th className="px-4 py-3 text-xs font-bold text-white">ORGANZATON</th> */}
+                <th
+                  className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
+                  onClick={() => handleSort("organization")}
+                >
+                  ORGANIZATION {sortKey === "organization" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                </th>
                 <th className="px-4 py-3 text-xs font-bold text-white">LOCATION</th>
-                <th className="px-4 py-3 text-xs font-bold text-white">DATE</th>
+                {/* <th className="px-4 py-3 text-xs font-bold text-white">DATE</th> */}
+                <th
+                  className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
+                  onClick={() => handleSort("date")}
+                >
+                  DATE {sortKey === "date" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                </th>
                 <th className="px-4 py-3 text-xs font-bold text-white">TAGS</th>
                 <th className="px-4 py-3 text-xs font-bold text-white">MORE INFO</th>
               </tr>
             </thead>
             <tbody>
-              {opportunitiesToDisplay.map(opp => (
+              {sortedOpportunities.map(opp => (
                 <tr key={opp.id} className="border-b border-gray-300">
                   <td className="px-4 py-4 text-center cursor-pointer text-xl">
                     <span
