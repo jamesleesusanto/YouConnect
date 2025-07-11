@@ -19,7 +19,14 @@ function getTagColor(tag) {
     "Community": "bg-orange-200 text-orange-800",
     "STEM": "bg-teal-200 text-teal-800",
     "Education": "bg-teal-200 text-teal-800",
-    "default": "bg-gray-200 text-gray-800"
+    "default": "bg-gray-200 text-gray-800",
+
+    //Opportunity Types:
+    "Internship": "bg-red-700 text-white",
+    "Workshop": "bg-teal-600 text-white",
+    "Event": "bg-purple-500 text-white",
+    "Volunteering": "bg-blue-700 text-white",
+
   };
   return colors[tag] || colors["default"];
 }
@@ -105,6 +112,16 @@ export default function Home() {
             : [],
           description: d["Detailed description of the event"] || "",
           contact: d["E-mail Address"] || "",
+
+          date: d["EventDateTime"]
+            ? d["EventDateTime"].split(" ")[0] // This will be "2025-11-01"
+            : "",
+
+          dateTime: d["EventDateTime"]
+            ? new Date(d["EventDateTime"].replace(" ", "T"))
+                .toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })
+            : ""
+            
         };
       });
       setOpportunities(data);
@@ -229,8 +246,10 @@ export default function Home() {
               <tr>
                 <th className="px-4 py-3 text-xs font-bold text-white text-center">FAVORITE</th>
                 <th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY NAME</th>
+                <th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY TYPE</th> 
                 <th className="px-4 py-3 text-xs font-bold text-white">ORGANZATON</th>
                 <th className="px-4 py-3 text-xs font-bold text-white">LOCATION</th>
+                <th className="px-4 py-3 text-xs font-bold text-white">DATE</th>
                 <th className="px-4 py-3 text-xs font-bold text-white">TAGS</th>
                 <th className="px-4 py-3 text-xs font-bold text-white">MORE INFO</th>
               </tr>
@@ -249,9 +268,19 @@ export default function Home() {
                   </td>
 
                   <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.name}</td>
+                  <td className="px-4 py-4">
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${getTagColor(opp.opportunityType)}`}>
+                      {opp.opportunityType}
+                    </span>
+                  </td>
                   <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.organization}</td>
                   <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.location}</td>
-                  <td className="px-4 py-4 text-gray-900">
+
+                  <td className="px-4 py-4 text-gray-900 font-bold text-sm">
+                    {opp.date}
+                  </td>
+
+                  <td className="px-4 py-4 text-gray-900 ">
                     {opp.tags.map((tag, idx) => (
                       <span
                         key={idx}
@@ -301,8 +330,15 @@ export default function Home() {
               </h2>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p><span className="font-bold text-purple-600">Organization:</span> {modalOpp.organization}</p>
-                  <p><span className="font-bold text-purple-600">Location:</span> {modalOpp.location}</p>
+                  <p>
+                    <span className="font-bold text-purple-600">Organization:</span> {modalOpp.organization}
+                  </p>
+                  <p>
+                    <span className="font-bold text-purple-600">Location:</span> {modalOpp.location}
+                  </p>
+                  <p>
+                    <span className="font-bold text-purple-600">Date/Time:</span> {modalOpp.dateTime}
+                  </p>
                 </div>
                 <div>
                   <p><span className="font-bold text-purple-600">Age Group:</span> {modalOpp.ageGroup}</p>
