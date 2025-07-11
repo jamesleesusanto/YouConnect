@@ -1,0 +1,133 @@
+"use client";
+
+
+import { useEffect, useState } from "react";
+import app from "../../lib/firebase";
+import '../../styles/global.css';
+import { getFirestore, collection, getDocs } from "firebase/firestore";
+
+export default function Home() {
+  const [opportunities, setOpportunities] = useState([]);
+  const [search, setSearch] = useState("");
+  const [modalOpp, setModalOpp] = useState(null);
+
+  // Fetch data from Firestore on mount
+  /*
+  useEffect(() => {
+    const fetchData = async () => {
+      const db = getFirestore(app);
+      const querySnapshot = await getDocs(collection(db, "opportunities"));
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setOpportunities(data);
+    };
+    fetchData();
+  }, []); 
+  */
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const db = getFirestore(app);
+      const querySnapshot = await getDocs(collection(db, "opportunities"));
+      const data = querySnapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          name: d["What is the name of your opportunity?"] || "",
+          organization: d["Organization Name"] || "",
+          location: d["City, State"] || "",
+          tags: d["Industry Tags"]
+            ? d["Industry Tags"].split(",").map(tag => tag.trim()).filter(Boolean)
+            : [],
+          // Add more fields as needed!
+        };
+      });
+      setOpportunities(data);
+    };
+    fetchData();
+  }, []);
+
+
+  // Filtered list
+  const filtered = opportunities.filter(opp => {
+    const name = opp["What is the name of your opportunity?"] || "";
+    return name.toLowerCase().includes(search.toLowerCase());
+  });
+
+  return (
+    <div className="bg-purple-50 min-h-screen p-4">
+      <div className="max-w-full mx-auto px-4">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+          <div className="w-20 h-20 flex-shrink-0">
+            <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          {/* Search bar */}
+          <div className="flex-1 mx-4">
+            <input
+              className="pl-4 pr-4 py-2 border rounded-full w-full bg-white"
+              type="text"
+              placeholder="Search by Name, Location, etc."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-purple-700">
+              <tr>
+                <th className="px-4 py-3 text-xs font-bold text-white">Name</th>
+                <th className="px-4 py-3 text-xs font-bold text-white">Organization</th>
+                <th className="px-4 py-3 text-xs font-bold text-white">Location</th>
+                <th className="px-4 py-3 text-xs font-bold text-white">More Info</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(opp => (
+                <tr key={opp.id} className="border-b">
+                  <td className="px-4 py-4 text-gray-900">{opp["What is the name of your opportunity?"]}</td>
+                  <td className="px-4 py-4 text-gray-900">{opp["Organization Name"]}</td>
+                  <td className="px-4 py-4 text-gray-900">{opp["City, State"]}</td>
+                  <td className="px-4 py-4">
+                    <button
+                      className="text-purple-700 font-bold"
+                      onClick={() => setModalOpp(opp)}
+                    >
+                      More Info
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Modal */}
+        {modalOpp && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-lg relative">
+              <button
+                className="absolute top-2 right-2 text-xl text-purple-700"
+                onClick={() => setModalOpp(null)}
+              >
+                ×
+              </button>
+              <h2 className="text-3xl font-extrabold mb-4 text-purple-700">
+                {modalOpp["What is the name of your opportunity?"]}
+              </h2>
+              <p className="mb-2"><strong>Organization:</strong> {modalOpp["Organization Name"]}</p>
+              <p className="mb-2"><strong>Location:</strong> {modalOpp["City, State"]}</p>
+              <p className="mb-2"><strong>Description:</strong> {modalOpp["Detailed description of the event"]}</p>
+              <p className="mb-2"><strong>Contact:</strong> {modalOpp["E-mail Address"]}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
