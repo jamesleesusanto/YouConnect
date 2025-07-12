@@ -95,7 +95,6 @@ export default function Home() {
 
 
 
-
   // Fetch data from Firestore on mount
   useEffect(() => {
     const fetchData = async () => {
@@ -103,6 +102,9 @@ export default function Home() {
       const querySnapshot = await getDocs(collection(db, "opportunities"));
       const data = querySnapshot.docs.map(doc => {
         const d = doc.data();
+        //console.log("remoteType from d:", d["Is the opportunity remote or in-person:"]);
+        console.log("d keys:", Object.keys(d));
+
         return {
           id: doc.id,
           name: d["What is the name of your opportunity?"] || "",
@@ -123,14 +125,24 @@ export default function Home() {
           dateTime: d["EventDateTime"]
             ? new Date(d["EventDateTime"].replace(" ", "T"))
                 .toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })
-            : ""
-            
+            : "",
+
+          remoteType: d["Is the opportunity remote or in-person"] || ""
+
+          
+          
         };
       });
+
+      console.log("Fetched opportunities:", data); // THIS ONE ONLY
+
+
       setOpportunities(data);
     };
     fetchData();
   }, []);
+
+
 
   // Filtered list
   const filteredOpportunities = opportunities.filter(opp =>
@@ -243,7 +255,7 @@ export default function Home() {
         {/* Action Buttons: Show All, Favorites, Export, Distance */}
         <div className="flex items-center gap-6 mb-8 mx-auto w-fit"> {/* adjust ml-40 as needed */}
           <button
-            className={`bg-purple-700 hover:bg-purple-800 text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80 ${
+            className={`bg-purple-700 hover:bg-purple-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80 ${
               !showOnlyFavorites ? '' : 'opacity-100'
             }`}
             onClick={() => setShowOnlyFavorites(false)}
@@ -251,7 +263,7 @@ export default function Home() {
             Show All Opportunities
           </button>
           <button
-            className={`bg-purple-700 hover:bg-purple-800 text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80${
+            className={`bg-purple-700 hover:bg-purple-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80${
               showOnlyFavorites ? '' : 'opacity-100'
             }`}
             onClick={() => setShowOnlyFavorites(true)}
@@ -259,7 +271,7 @@ export default function Home() {
             Favorites
           </button>
           <button
-            className="bg-red-700 hover:bg-red-800 text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition"
+            className="bg-red-700 hover:bg-red-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition"
             onClick={exportFavoritesToCSV}
           >
             Export Favorites
@@ -327,7 +339,18 @@ export default function Home() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.organization}</td>
-                  <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.location}</td>
+                  
+                  
+                  <td className="px-4 py-4 text-gray-900 font-bold text-sm flex items-center gap-1">
+                    {opp.location}
+                    {opp.remoteType === "Remote" && (
+                      <>
+                        <span className="ml-0 text-xs font-semibold text-blue-600"></span>
+                        <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-0 mt-0.5" />
+                      </>
+                    )}
+                  </td>
+
 
                   <td className="px-4 py-4 text-gray-900 font-bold text-sm">
                     {opp.date}
@@ -345,7 +368,7 @@ export default function Home() {
                   </td>
                   <td className="px-4 py-4">
                     <button
-                      className="text-purple-700 font-bold"
+                      className="text-purple-700 cursor-pointer font-bold"
                       onClick={() => setModalOpp(opp)}
                     >
                       More Info
@@ -372,7 +395,7 @@ export default function Home() {
            
 
               <button
-                className="absolute top-4 right-4 text-2xl text-purple-700 font-bold"
+                className="absolute top-4 cursor-pointer right-4 text-2xl text-purple-700 font-bold"
                 onClick={() => setModalOpp(null)}
                 aria-label="Close modal"
               >
@@ -386,9 +409,20 @@ export default function Home() {
                   <p>
                     <span className="font-bold text-purple-600">Organization:</span> {modalOpp.organization}
                   </p>
+                  
                   <p>
                     <span className="font-bold text-purple-600">Location:</span> {modalOpp.location}
+                    {modalOpp.remoteType === "Remote" && (
+                      <>
+                        <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-1" />
+                        <span className="ml-2 text-xs font-semibold text-blue-600">Remote</span>
+                        
+                      </>
+                    )}
                   </p>
+
+
+
                   <p>
                     <span className="font-bold text-purple-600">Date/Time:</span> {modalOpp.dateTime}
                   </p>

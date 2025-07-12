@@ -26,7 +26,7 @@ export default function FilterDropdown({ label, options, selected, setSelected }
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="bg-purple-700 hover:bg-purple-800 text-sm text-white font-bold px-4.5 py-2 rounded-full text-base mr-1"
+        className="bg-purple-700 hover:bg-purple-800 cursor-pointer text-sm text-white font-bold px-4.5 py-2 rounded-full text-base mr-1"
         type="button"
       >
         {label}
