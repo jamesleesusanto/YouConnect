@@ -2,6 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
 */
 
+html,
+body {
+  background-color: #f3e8ff;  /* match your Tailwind purple-50 */
+}
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -5,6 +5,7 @@ import app from "../../lib/firebase";
 import '../../styles/global.css';
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import FilterDropdown from '../../components/FilterDropdown';
+import Loader from '../../components/Loader';
 
 
 // Tag coloring helper
@@ -43,6 +44,9 @@ export default function Home() {
   const [modalOpp, setModalOpp] = useState(null);
   const [sortKey, setSortKey] = useState('date'); // e.g. 'name', 'organization', 'date'
   const [sortDirection, setSortDirection] = useState("asc");
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
 
 
   // Dropdown options
@@ -138,11 +142,21 @@ export default function Home() {
 
 
       setOpportunities(data);
+      
+      setDataLoaded(true); 
     };
     fetchData();
   }, []);
 
 
+  if (showLoader) {
+    return (
+      <Loader
+        loadingDone={dataLoaded}         // ← pass dataLoaded here
+        onFinish={() => setShowLoader(false)}
+      />
+    );
+  }
 
   // Filtered list
   const filteredOpportunities = opportunities.filter(opp =>
@@ -194,259 +208,261 @@ export default function Home() {
   
   // UI
   return (
-    <div className="bg-purple-50 min-h-screen p-4 font-segoe">
-      <div className="max-w-full mx-auto px-4">
-        
-        {/* Header: Logo + Search + Filters */}
-        <div className="flex items-center mb-4">
-          {/* Logo */}
-          <div className="w-20 h-20 flex-shrink-0 mr-4">
-            <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
-          </div>
-          {/* Search bar */}
-          <div className="relative flex-1 mr-4">
-            <svg
-              className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              className="pl-10 pr-4 py-2 border rounded-full text-sm w-full bg-white text-lg text-gray-700"
-              placeholder="Search by Name, Location, Age Group, Industry, or Opportunity Type"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          {/* Dropdowns */}
-          <div className="flex gap-4">
-            <FilterDropdown
-              label="Select Industry"
-              options={industryOptions}
-              selected={selectedIndustries}
-              setSelected={setSelectedIndustries}
-            />
-            <FilterDropdown
-              label="Select Age Group"
-              options={ageGroupOptions}
-              selected={selectedAgeGroups}
-              setSelected={setSelectedAgeGroups}
-            />
-            <FilterDropdown
-              label="Select Opportunity Type"
-              options={opportunityTypeOptions}
-              selected={selectedOpportunityTypes}
-              setSelected={setSelectedOpportunityTypes}
-            />
-          </div>
-        </div>
-
-        {/* Action Buttons: Show All, Favorites, Export, Distance */}
-        <div className="flex items-center gap-6 mb-8 mx-auto w-fit"> {/* adjust ml-40 as needed */}
-          <button
-            className={`bg-purple-700 hover:bg-purple-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80 ${
-              !showOnlyFavorites ? '' : 'opacity-100'
-            }`}
-            onClick={() => setShowOnlyFavorites(false)}
-          >
-            Show All Opportunities
-          </button>
-          <button
-            className={`bg-purple-700 hover:bg-purple-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80${
-              showOnlyFavorites ? '' : 'opacity-100'
-            }`}
-            onClick={() => setShowOnlyFavorites(true)}
-          >
-            Favorites
-          </button>
-          <button
-            className="bg-red-700 hover:bg-red-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition"
-            onClick={exportFavoritesToCSV}
-          >
-            Export Favorites
-          </button>
-          {/*
-          <label className="ml-6 text-lg flex items-center gap-2">
-            Enable Distance Display
-            <input type="checkbox" />
-          </label>
-          */}
-        </div>
-
-
-
-        {/* Table */}
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-purple-700">
-              <tr>
-                <th className="px-4 py-3 text-xs font-bold text-white text-center">FAVORITE</th>
-                {/*<th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY NAME</th>*/}
-                <th
-                  className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
-                  onClick={() => handleSort("name")}
+    
+        <div className="bg-purple-50 min-h-screen p-4 font-segoe">
+          <div className="max-w-full mx-auto px-4">
+            
+            {/* Header: Logo + Search + Filters */}
+            <div className="flex items-center mb-4">
+              {/* Logo */}
+              <div className="w-20 h-20 flex-shrink-0 mr-4">
+                <img src="/logo.webp" alt="Logo" className="w-full h-full object-contain" />
+              </div>
+              {/* Search bar */}
+              <div className="relative flex-1 mr-4">
+                <svg
+                  className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                  focusable="false"
                 >
-                  OPPORTUNITY NAME {sortKey === "name" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY TYPE</th> 
-                {/* <th className="px-4 py-3 text-xs font-bold text-white">ORGANZATON</th> */}
-                <th
-                  className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
-                  onClick={() => handleSort("organization")}
-                >
-                  ORGANIZATION {sortKey === "organization" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-white">LOCATION</th>
-                {/* <th className="px-4 py-3 text-xs font-bold text-white">DATE</th> */}
-                <th
-                  className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
-                  onClick={() => handleSort("date")}
-                >
-                  DATE {sortKey === "date" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th className="px-4 py-3 text-xs font-bold text-white">TAGS</th>
-                <th className="px-4 py-3 text-xs font-bold text-white">MORE INFO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedOpportunities.map(opp => (
-                <tr key={opp.id} className="border-b border-gray-300">
-                  <td className="px-4 py-4 text-center cursor-pointer text-xl">
-                    <span
-                      onClick={() => toggleFavorite(opp.id)}
-                      style={{ userSelect: "none" }}
-                      aria-label={favorites.includes(opp.id) ? "Remove from favorites" : "Add to favorites"}
-                    >
-                      {favorites.includes(opp.id) ? "❤️" : "🤍"}
-                    </span>
-                  </td>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  className="pl-10 pr-4 py-2 border rounded-full text-sm w-full bg-white text-lg text-gray-700"
+                  placeholder="Search by Name, Location, Age Group, Industry, or Opportunity Type"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              {/* Dropdowns */}
+              <div className="flex gap-4">
+                <FilterDropdown
+                  label="Select Industry"
+                  options={industryOptions}
+                  selected={selectedIndustries}
+                  setSelected={setSelectedIndustries}
+                />
+                <FilterDropdown
+                  label="Select Age Group"
+                  options={ageGroupOptions}
+                  selected={selectedAgeGroups}
+                  setSelected={setSelectedAgeGroups}
+                />
+                <FilterDropdown
+                  label="Select Opportunity Type"
+                  options={opportunityTypeOptions}
+                  selected={selectedOpportunityTypes}
+                  setSelected={setSelectedOpportunityTypes}
+                />
+              </div>
+            </div>
 
-                  <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.name}</td>
-                  <td className="px-4 py-4">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${getTagColor(opp.opportunityType)}`}>
-                      {opp.opportunityType}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.organization}</td>
-                  
-                  
-                  <td className="px-4 py-4 text-gray-900 font-bold text-sm flex items-center gap-1">
-                    {opp.location}
-                    {opp.remoteType === "Remote" && (
-                      <>
-                        <span className="ml-0 text-xs font-semibold text-blue-600"></span>
-                        <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-0 mt-0.5" />
-                      </>
-                    )}
-                  </td>
-
-
-                  <td className="px-4 py-4 text-gray-900 font-bold text-sm">
-                    {opp.date}
-                  </td>
-
-                  <td className="px-4 py-4 text-gray-900 ">
-                    {opp.tags.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-semibold mr-1 mb-1 ${getTagColor(tag)}`}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </td>
-                  <td className="px-4 py-4">
-                    <button
-                      className="text-purple-700 cursor-pointer font-bold"
-                      onClick={() => setModalOpp(opp)}
-                    >
-                      More Info
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-       {/* Modal */}
-        {modalOpp && (
-          
-           <div
-              className="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50"
-              onClick={() => setModalOpp(null)}  // <--- clicking overlay closes modal
-            >
-
-               <div
-                  className="bg-white rounded-xl shadow-xl p-10 max-w-2xl w-full relative text-gray-800"
-                  onClick={e => e.stopPropagation()}  // <--- stops click inside modal from closing
-                >
-           
-
+            {/* Action Buttons: Show All, Favorites, Export, Distance */}
+            <div className="flex items-center gap-6 mb-8 mx-auto w-fit"> {/* adjust ml-40 as needed */}
               <button
-                className="absolute top-4 cursor-pointer right-4 text-2xl text-purple-700 font-bold"
-                onClick={() => setModalOpp(null)}
-                aria-label="Close modal"
+                className={`bg-purple-700 hover:bg-purple-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80 ${
+                  !showOnlyFavorites ? '' : 'opacity-100'
+                }`}
+                onClick={() => setShowOnlyFavorites(false)}
               >
-                ×
+                Show All Opportunities
               </button>
-              <h2 className="text-3xl font-extrabold mb-2 text-purple-700">
-                {modalOpp.name}
-              </h2>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p>
-                    <span className="font-bold text-purple-600">Organization:</span> {modalOpp.organization}
-                  </p>
-                  
-                  <p>
-                    <span className="font-bold text-purple-600">Location:</span> {modalOpp.location}
-                    {modalOpp.remoteType === "Remote" && (
-                      <>
-                        <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-1" />
-                        <span className="ml-2 text-xs font-semibold text-blue-600">Remote</span>
-                        
-                      </>
-                    )}
-                  </p>
+              <button
+                className={`bg-purple-700 hover:bg-purple-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition opacity-80${
+                  showOnlyFavorites ? '' : 'opacity-100'
+                }`}
+                onClick={() => setShowOnlyFavorites(true)}
+              >
+                Favorites
+              </button>
+              <button
+                className="bg-red-700 hover:bg-red-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition"
+                onClick={exportFavoritesToCSV}
+              >
+                Export Favorites
+              </button>
+              {/*
+              <label className="ml-6 text-lg flex items-center gap-2">
+                Enable Distance Display
+                <input type="checkbox" />
+              </label>
+              */}
+            </div>
 
 
 
-                  <p>
-                    <span className="font-bold text-purple-600">Date/Time:</span> {modalOpp.dateTime}
-                  </p>
-                </div>
-                <div>
-                  <p><span className="font-bold text-purple-600">Age Group:</span> {modalOpp.ageGroup}</p>
-                  <p>
-                    <span className="font-bold text-purple-600">Industry:</span>
-                    {modalOpp.tags.map((tag, i) => (
-                      <span key={i} className={`inline-block ml-2 px-2 py-1 rounded-full text-xs font-semibold ${getTagColor(tag)}`}>
-                        {tag}
-                      </span>
-                    ))}
-                  </p>
+            {/* Table */}
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-purple-700">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-bold text-white text-center">FAVORITE</th>
+                    {/*<th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY NAME</th>*/}
+                    <th
+                      className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
+                      onClick={() => handleSort("name")}
+                    >
+                      OPPORTUNITY NAME {sortKey === "name" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                    </th>
+                    <th className="px-4 py-3 text-xs font-bold text-white">OPPORTUNITY TYPE</th> 
+                    {/* <th className="px-4 py-3 text-xs font-bold text-white">ORGANZATON</th> */}
+                    <th
+                      className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
+                      onClick={() => handleSort("organization")}
+                    >
+                      ORGANIZATION {sortKey === "organization" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                    </th>
+                    <th className="px-4 py-3 text-xs font-bold text-white">LOCATION</th>
+                    {/* <th className="px-4 py-3 text-xs font-bold text-white">DATE</th> */}
+                    <th
+                      className="px-4 py-3 text-xs font-bold text-white cursor-pointer"
+                      onClick={() => handleSort("date")}
+                    >
+                      DATE {sortKey === "date" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                    </th>
+                    <th className="px-4 py-3 text-xs font-bold text-white">TAGS</th>
+                    <th className="px-4 py-3 text-xs font-bold text-white">MORE INFO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedOpportunities.map(opp => (
+                    <tr key={opp.id} className="border-b border-gray-300">
+                      <td className="px-4 py-4 text-center cursor-pointer text-xl">
+                        <span
+                          onClick={() => toggleFavorite(opp.id)}
+                          style={{ userSelect: "none" }}
+                          aria-label={favorites.includes(opp.id) ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          {favorites.includes(opp.id) ? "❤️" : "🤍"}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.name}</td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${getTagColor(opp.opportunityType)}`}>
+                          {opp.opportunityType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.organization}</td>
+                      
+                      
+                      <td className="px-4 py-4 text-gray-900 font-bold text-sm flex items-center gap-1">
+                        {opp.location}
+                        {opp.remoteType === "Remote" && (
+                          <>
+                            <span className="ml-0 text-xs font-semibold text-blue-600"></span>
+                            <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-0 mt-0.5" />
+                          </>
+                        )}
+                      </td>
+
+
+                      <td className="px-4 py-4 text-gray-900 font-bold text-sm">
+                        {opp.date}
+                      </td>
+
+                      <td className="px-4 py-4 text-gray-900 ">
+                        {opp.tags.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-semibold mr-1 mb-1 ${getTagColor(tag)}`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          className="text-purple-700 cursor-pointer font-bold"
+                          onClick={() => setModalOpp(opp)}
+                        >
+                          More Info
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          {/* Modal */}
+            {modalOpp && (
+              
+              <div
+                  className="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50"
+                  onClick={() => setModalOpp(null)}  // <--- clicking overlay closes modal
+                >
+
+                  <div
+                      className="bg-white rounded-xl shadow-xl p-10 max-w-2xl w-full relative text-gray-800"
+                      onClick={e => e.stopPropagation()}  // <--- stops click inside modal from closing
+                    >
+              
+
+                  <button
+                    className="absolute top-4 cursor-pointer right-4 text-2xl text-purple-700 font-bold"
+                    onClick={() => setModalOpp(null)}
+                    aria-label="Close modal"
+                  >
+                    ×
+                  </button>
+                  <h2 className="text-3xl font-extrabold mb-2 text-purple-700">
+                    {modalOpp.name}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p>
+                        <span className="font-bold text-purple-600">Organization:</span> {modalOpp.organization}
+                      </p>
+                      
+                      <p>
+                        <span className="font-bold text-purple-600">Location:</span> {modalOpp.location}
+                        {modalOpp.remoteType === "Remote" && (
+                          <>
+                            <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-1" />
+                            <span className="ml-2 text-xs font-semibold text-blue-600">Remote</span>
+                            
+                          </>
+                        )}
+                      </p>
+
+
+
+                      <p>
+                        <span className="font-bold text-purple-600">Date/Time:</span> {modalOpp.dateTime}
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="font-bold text-purple-600">Age Group:</span> {modalOpp.ageGroup}</p>
+                      <p>
+                        <span className="font-bold text-purple-600">Industry:</span>
+                        {modalOpp.tags.map((tag, i) => (
+                          <span key={i} className={`inline-block ml-2 px-2 py-1 rounded-full text-xs font-semibold ${getTagColor(tag)}`}>
+                            {tag}
+                          </span>
+                        ))}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mb-2"><span className="font-bold text-purple-600">Description:</span> {modalOpp.description}</p>
+                  <p><span className="font-bold text-purple-600">Contact:</span> {modalOpp.contact}</p>
                 </div>
               </div>
-              <p className="mb-2"><span className="font-bold text-purple-600">Description:</span> {modalOpp.description}</p>
-              <p><span className="font-bold text-purple-600">Contact:</span> {modalOpp.contact}</p>
-            </div>
+            )}
+
+
           </div>
-        )}
+        </div>
 
-
-      </div>
-    </div>
   );
 }
