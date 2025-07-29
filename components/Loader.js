@@ -59,7 +59,19 @@ export default function Loader({ loadingDone, onFinish }) {
           style={{ width: `${percent}%` }}
         />
       </div>
-      <p className="text-gray-700">Loading… {Math.floor(percent)}%</p>
+      
+      {/* <p className="text-gray-700">Loading… {Math.floor(percent)}%</p> */}
+
+      <p className="text-gray-700">
+        {Math.floor(percent) <= 20
+          ? "Initializing..."
+          : Math.floor(percent) <= 68
+          ? "Loading Data..."
+          : "Rendering Opportunities..."}{" "}
+        {Math.floor(percent)}%
+      </p>
+
+
     </div>
   );
 }
