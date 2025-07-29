@@ -12,7 +12,7 @@ export default function Loader({ loadingDone, onFinish }) {
 
   useEffect(() => {
     const maxDuration = 3200;    // total animation time
-    const minDuration = 1200;
+    const minDuration = 880;
 
     const duration = Math.floor(Math.random() * (maxDuration - minDuration) + minDuration);
 
