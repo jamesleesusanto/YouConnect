@@ -114,7 +114,11 @@ export default function Home() {
           name: d["What is the name of your opportunity?"] || "",
           organization: d["Organization Name"] || "",
           location: d["City, State"] || "",
-          ageGroup: d["What is the suggested age group?"] || "",
+          // ageGroup: d["What is the suggested age group?"] || "",
+          ageGroups: d["What is the suggested age group?"] || ""
+          ? d["What is the suggested age group?"].split(",").map(ageGroup => ageGroup.trim()).filter(Boolean)
+            : [],
+          
           opportunityType: d["Opportunity Type"] || "",
           tags: d["Industry Tags"]
             ? d["Industry Tags"].split(",").map(tag => tag.trim()).filter(Boolean)
@@ -161,7 +165,8 @@ export default function Home() {
   // Filtered list
   const filteredOpportunities = opportunities.filter(opp =>
     (selectedIndustries.length === 0 || opp.tags.some(tag => selectedIndustries.includes(tag))) &&
-    (selectedAgeGroups.length === 0 || selectedAgeGroups.includes(opp.ageGroup)) &&
+    // (selectedAgeGroups.length === 0 || selectedAgeGroups.includes(opp.ageGroup)) &&
+    (selectedAgeGroups.length === 0 || opp.ageGroups.some(age => selectedAgeGroups.includes(age))) &&
     (selectedOpportunityTypes.length === 0 || selectedOpportunityTypes.includes(opp.opportunityType)) &&
     (
       opp.name.toLowerCase().includes(search.toLowerCase()) ||
