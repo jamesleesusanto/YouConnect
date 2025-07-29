@@ -11,10 +11,12 @@ export default function Loader({ loadingDone, onFinish }) {
 
 
   useEffect(() => {
-    const maxDuration = 1050;    // total animation time
-    const minDuration = 550;
+    const maxDuration = 3200;    // total animation time
+    const minDuration = 1200;
 
     const duration = Math.floor(Math.random() * (maxDuration - minDuration) + minDuration);
+
+
 
     const start = Date.now();
 
