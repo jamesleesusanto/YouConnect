@@ -135,9 +135,9 @@ export default function Home() {
                 .toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })
             : "",
 
-          remoteType: d["Is the opportunity remote or in-person"] || ""
+          remoteType: d["Is the opportunity remote or in-person"] || "",
 
-          
+          recurrence: d["Is the event recurring?"] || ""
           
         };
       });
@@ -361,7 +361,7 @@ export default function Home() {
                       <td className="px-4 py-4 text-gray-900 font-bold text-sm">{opp.organization}</td>
                       
                       
-                      <td className="px-4 py-4 text-gray-900 font-bold text-sm flex items-center gap-1">
+                      {/* <td className="px-4 py-4 text-gray-900 font-bold text-sm flex items-center gap-1">
                         {opp.location}
                         {opp.remoteType === "Remote" && (
                           <>
@@ -369,11 +369,32 @@ export default function Home() {
                             <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-0 mt-0.5" />
                           </>
                         )}
+                      </td> */}
+                      
+                      {/* Lines up locations with other data horizontally */}
+                      <td className="px-4 py-4 text-gray-900 font-bold text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <span>{opp.location}</span>
+                          {opp.remoteType === "Remote" && (
+                            <img
+                              src="/computer.svg"
+                              alt="Remote"
+                              className="w-4 h-4 object-contain mt-0.75"
+                            />
+                          )}
+                        </div>
                       </td>
+
 
 
                       <td className="px-4 py-4 text-gray-900 font-bold text-sm">
                         {opp.date}
+                        {opp.recurrence != "Non-Recurring!" && (
+                          <>
+                            <span className="ml-0.5 text-xs font-bold text-blue-600"></span>
+                            <img src="/recurrence.svg" alt="Recurring" className="inline w-6 h-4 ml-0 mb-0.5" />
+                          </>
+                        )}
                       </td>
 
                       <td className="px-4 py-4 text-gray-900 ">
