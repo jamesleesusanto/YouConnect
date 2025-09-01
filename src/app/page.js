@@ -6,6 +6,8 @@ import '../../styles/global.css';
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import FilterDropdown from '../../components/FilterDropdown';
 import Loader from '../../components/Loader';
+import Toggle from "../../components/Toggle";
+
 
 
 // Tag coloring helper
@@ -47,7 +49,14 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
+  const [showRemoteOnly, setShowRemoteOnly] = useState(false);
 
+
+  // Email export modal - might have to edit or add/delete ltr
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [sending, setSending] = useState(false);
+  //const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   // Dropdown options
   const industryOptions = [
@@ -97,7 +106,12 @@ export default function Home() {
     link.click();
   }
 
+  function exportFavoritesWithEmail(){
+    //const email = window.prompt("Enter your email to receive your favorites CSV:"); //using window prompt
+    //use modal
+    setEmailModalOpen(true);
 
+  }
 
   // Fetch data from Firestore on mount
   useEffect(() => {
@@ -168,6 +182,7 @@ export default function Home() {
     // (selectedAgeGroups.length === 0 || selectedAgeGroups.includes(opp.ageGroup)) &&
     (selectedAgeGroups.length === 0 || opp.ageGroups.some(age => selectedAgeGroups.includes(age))) &&
     (selectedOpportunityTypes.length === 0 || selectedOpportunityTypes.includes(opp.opportunityType)) &&
+    (!showRemoteOnly || opp.remoteType === "Remote") && 
     (
       opp.name.toLowerCase().includes(search.toLowerCase()) ||
       opp.organization.toLowerCase().includes(search.toLowerCase()) ||
@@ -293,6 +308,8 @@ export default function Home() {
               <button
                 className="bg-red-700 hover:bg-red-800 cursor-pointer text-white text-sm font-bold h-9 py-1.75 px-4 rounded-full text-lg transition"
                 onClick={exportFavoritesToCSV}
+                // onClick={exportFavoritesWithEmail}
+
               >
                 Export Favorites
               </button>
@@ -302,6 +319,14 @@ export default function Home() {
                 <input type="checkbox" />
               </label>
               */}
+
+                <div className="flex items-center gap-2">
+                  <Toggle checked={showRemoteOnly} onChange={setShowRemoteOnly} />
+                  <span className="text-base font-semibold text-gray-700 select-none">
+                    Remote Only
+                  </span>
+
+                </div>
             </div>
 
 
@@ -483,6 +508,77 @@ export default function Home() {
                   <p className="mb-2"><span className="font-bold text-purple-600">Description:</span> {modalOpp.description}</p>
                   <p><span className="font-bold text-purple-600">Contact:</span> {modalOpp.contact}</p>
                 </div>
+              </div>
+            )}
+
+            {emailModalOpen && (
+              <div
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                onClick={() => setEmailModalOpen(false)}
+              >
+                {/* <div
+                  className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 className="text-xl font-bold mb-4">Email your Favorites</h2>
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    className="w-full border rounded-lg p-2 mb-4"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-4 py-2 rounded-lg border"
+                      onClick={() => setEmailModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded-lg bg-red-700 text-white disabled:opacity-50"
+                      onClick={sendEmail}
+                      disabled={sending || !emailInput}
+                    >
+                      {sending ? "Sending..." : "Send"}
+                    </button>
+                  </div>
+                  {statusMsg && <p className="mt-3 text-sm">{statusMsg}</p>}
+                </div> */}
+
+
+                <div
+                  className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full text-black"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 className="text-xl font-bold mb-4 ">Email your Favorites</h2>
+                  <input
+                    autoFocus
+                    type="email"
+                    placeholder="you@example.com"
+                    className="w-full border rounded-lg p-2 mb-4"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => setEmailModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded-lg bg-purple-700 text-white hover:bg-purple-900 disabled:opacity-80 cursor-pointer"
+                      //onClick={sendEmail}
+                      disabled={sending || !emailInput}
+                    >
+                      {sending ? "Sending..." : "Send"}
+                    </button>
+                  </div>
+
+
+                </div>
+                
               </div>
             )}
 
