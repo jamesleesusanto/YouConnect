@@ -7,7 +7,9 @@ import { getFirestore, collection, getDocs } from "firebase/firestore";
 import FilterDropdown from '../../components/FilterDropdown';
 import Loader from '../../components/Loader';
 import Toggle from "../../components/Toggle";
-
+import NavBar from "../../components/NavBar";
+import OpportunityModal from "../../components/OpportunityModal";
+import LocationModal from "../../components/LocationModal";
 
 
 // Tag coloring helper
@@ -58,6 +60,20 @@ export default function Home() {
   const [sending, setSending] = useState(false);
   //const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
+  //Geo Modal - Might have to adjust
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [locationInput, setLocationInput] = useState("");
+  const [geocoding, setGeocoding] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const [userCoords, setUserCoords] = useState(null);          // { lat, lng }
+  const [userLocationLabel, setUserLocationLabel] = useState(""); // e.g., "48104" or "Austin, TX"
+  const [hover, setHover] = useState(false); //Used in location button, but may be useful in other areas
+
+
+
+
+
+
   // Dropdown options
   const industryOptions = [
     "Business", "Community", "Education", "Environment",
@@ -70,7 +86,6 @@ export default function Home() {
     "Internship", "Workshop", "Event", "Volunteering"
   ];
 
-
   function toggleFavorite(id) {
     setFavorites(favs =>
       favs.includes(id)
@@ -78,9 +93,6 @@ export default function Home() {
         : [...favs, id]
     );
   }
-
-
-
 
   function exportFavoritesToCSV() {
     const favs = filteredOpportunities.filter(opp => favorites.includes(opp.id));
@@ -119,9 +131,13 @@ export default function Home() {
       const db = getFirestore(app);
       const querySnapshot = await getDocs(collection(db, "opportunities"));
       const data = querySnapshot.docs.map(doc => {
-        const d = doc.data();
-        //console.log("remoteType from d:", d["Is the opportunity remote or in-person:"]);
-        console.log("d keys:", Object.keys(d));
+      const d = doc.data();
+      //console.log("remoteType from d:", d["Is the opportunity remote or in-person:"]);
+      console.log("d keys:", Object.keys(d));
+
+      const lat = parseFloat(d["Latitude"]);
+      const lng = parseFloat(d["Longitude"]);
+      const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
 
         return {
           id: doc.id,
@@ -151,7 +167,9 @@ export default function Home() {
 
           remoteType: d["Is the opportunity remote or in-person"] || "",
 
-          recurrence: d["Is the event recurring?"] || ""
+          recurrence: d["Is the event recurring?"] || "",
+
+          coordinates: hasCoords ? { lat, lng } : null
           
         };
       });
@@ -166,7 +184,6 @@ export default function Home() {
     fetchData();
   }, []);
 
-
   if (showLoader) {
     return (
       <Loader
@@ -176,10 +193,37 @@ export default function Home() {
     );
   }
 
+  //  ****
+  //  LOCATION HELPER FUNCTIONS
+  //  ****
+  function haversineMiles(a, b) {
+    if (!a || !b) return null;
+    const R = 6371; // km
+    const toRad = (x) => (x * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const km = 2 * R * Math.asin(Math.sqrt(h));
+    return km * 0.621371; // -> miles
+  }
+
+  function clearSavedLocation() {
+    setUserLocationLabel("");
+    setUserCoords(null);
+    localStorage.removeItem("yc_user_label");
+    localStorage.removeItem("yc_user_coords");
+    // reset sorting if sorting by distance
+    setSortKey("date"); setSortDirection("asc");
+  }
+
   // Filtered list
   const filteredOpportunities = opportunities.filter(opp =>
     (selectedIndustries.length === 0 || opp.tags.some(tag => selectedIndustries.includes(tag))) &&
-    // (selectedAgeGroups.length === 0 || selectedAgeGroups.includes(opp.ageGroup)) &&
+    //(selectedAgeGroups.length === 0 || selectedAgeGroups.includes(opp.ageGroup)) &&
     (selectedAgeGroups.length === 0 || opp.ageGroups.some(age => selectedAgeGroups.includes(age))) &&
     (selectedOpportunityTypes.length === 0 || selectedOpportunityTypes.includes(opp.opportunityType)) &&
     (!showRemoteOnly || opp.remoteType === "Remote") && 
@@ -194,13 +238,22 @@ export default function Home() {
     ? filteredOpportunities.filter(opp => favorites.includes(opp.id))
     : filteredOpportunities;
 
-
-
   //Sorted Lists
   const sortedOpportunities = [...opportunitiesToDisplay].sort((a, b) => {
     if (!sortKey) return 0; // No sort
     let valA = a[sortKey];
     let valB = b[sortKey];
+
+
+    //LOCATION
+    if (sortKey === "distance") {
+      // missing distances go to the bottom
+      const dA = userCoords && a.coordinates ? haversineMiles(userCoords, a.coordinates) : Infinity;
+      const dB = userCoords && b.coordinates ? haversineMiles(userCoords, b.coordinates) : Infinity;
+      return sortDirection === "asc" ? dA - dB : dB - dA;
+    }
+    
+
 
     // For date, convert to Date object
     if (sortKey === "date") {
@@ -225,11 +278,22 @@ export default function Home() {
     }
   }
 
+
   
   // UI
   return (
-    
-        <div className="bg-purple-50 min-h-screen p-4 font-segoe">
+          <div className="bg-purple-50 min-h-screen p-4 font-segoe">
+
+          {/* NEW: NavBar */}
+          {/* <NavBar
+            favoritesCount={favorites.length}
+            showOnlyFavorites={showOnlyFavorites}
+            setShowOnlyFavorites={setShowOnlyFavorites}
+            onExportCSV={exportFavoritesToCSV}
+            onOpenEmailModal={() => setEmailModalOpen(true)}
+          /> */}
+
+
           <div className="max-w-full mx-auto px-4">
             
             {/* Header: Logo + Search + Filters */}
@@ -320,16 +384,50 @@ export default function Home() {
               </label>
               */}
 
-                <div className="flex items-center gap-2">
-                  <Toggle checked={showRemoteOnly} onChange={setShowRemoteOnly} />
-                  <span className="text-base font-semibold text-gray-700 select-none">
-                    Remote Only
-                  </span>
+              <button
+                onMouseEnter={() => setHover(true)}
+                onMouseLeave={() => setHover(false)}
 
-                </div>
+                className={userLocationLabel ? 
+                  "bg-green-300 hover:bg-green-100 border border-green-500 text-gray-800 text-sm font-bold h-9 w-50 py-1.5 px-4 rounded-full cursor-pointer" 
+                  : "bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-800 text-sm font-bold h-9 py-1.5 px-4 rounded-full cursor-pointer"}
+                onClick={() => {
+                  if (userLocationLabel?.trim()){
+                    clearSavedLocation();
+                  }
+                  else{
+                    setGeoError("");
+                    setLocationInput(userLocationLabel || "");
+                    setLocationModalOpen(true);
+                  }
+                }}
+              >
+                {/* {hover
+                  ? (userLocationLabel?.trim() ? "Reset Location" : "Set Location")
+                  : (userLocationLabel?.trim() ? `Location: ${userLocationLabel}` : "Set Location")} */}
+                {hover
+                  ? (userLocationLabel?.trim() ? "Reset Location" : "Set Location")
+                  : (userLocationLabel?.trim()
+                      ? `Location: ${
+                          ((userLocationLabel ?? "").trim().length > 13)
+                            ? ((userLocationLabel ?? "").trim().slice(0, 13) + "...")
+                            : ((userLocationLabel ?? "").trim())
+                        }`
+                      : "Set Location")
+                }
+                
+              </button>
+
+
+              <div className="flex items-center gap-2">
+                <Toggle checked={showRemoteOnly} onChange={setShowRemoteOnly} />
+                <span className="text-base font-semibold text-gray-700 select-none">
+                  Remote Only
+                </span>
+              </div>
+
+              
             </div>
-
-
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -409,9 +507,6 @@ export default function Home() {
                           )}
                         </div>
                       </td>
-
-
-
                       <td className="px-4 py-4 text-gray-900 font-bold text-sm">
                         {opp.date}
                         {opp.recurrence != "Non-Recurring!" && (
@@ -421,7 +516,6 @@ export default function Home() {
                           </>
                         )}
                       </td>
-
                       <td className="px-4 py-4 text-gray-900 ">
                         {opp.tags.map((tag, idx) => (
                           <span
@@ -446,70 +540,29 @@ export default function Home() {
               </table>
             </div>
 
-          {/* Modal */}
-            {modalOpp && (
-              
-              <div
-                  className="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50"
-                  onClick={() => setModalOpp(null)}  // <--- clicking overlay closes modal
-                >
+            <OpportunityModal
+              open={Boolean(modalOpp)}
+              opp={modalOpp}
+              onClose={() => setModalOpp(null)}
+              getTagColor={getTagColor}
+            />
 
-                  <div
-                      className="bg-white rounded-xl shadow-xl p-10 max-w-2xl w-full relative text-gray-800"
-                      onClick={e => e.stopPropagation()}  // <--- stops click inside modal from closing
-                    >
-              
-
-                  <button
-                    className="absolute top-4 cursor-pointer right-4 text-2xl text-purple-700 font-bold"
-                    onClick={() => setModalOpp(null)}
-                    aria-label="Close modal"
-                  >
-                    ×
-                  </button>
-                  <h2 className="text-3xl font-extrabold mb-2 text-purple-700">
-                    {modalOpp.name}
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p>
-                        <span className="font-bold text-purple-600">Organization:</span> {modalOpp.organization}
-                      </p>
-                      
-                      <p>
-                        <span className="font-bold text-purple-600">Location:</span> {modalOpp.location}
-                        {modalOpp.remoteType === "Remote" && (
-                          <>
-                            <img src="/computer.svg" alt="Remote" className="inline w-4 h-4 ml-1" />
-                            <span className="ml-2 text-xs font-semibold text-blue-600">Remote</span>
-                            
-                          </>
-                        )}
-                      </p>
+                        
+            <LocationModal
+              open={locationModalOpen}
+              initialLabel={userLocationLabel}
+              onResolved={({ coords, label }) => {
+                setUserCoords(coords);
+                setUserLocationLabel(label);
+                // 👇 auto-sort nearest → farthest
+                setSortKey("distance");
+                setSortDirection("asc");
+              }}
+              onClose={() => setLocationModalOpen(false)}
+            />
 
 
-
-                      <p>
-                        <span className="font-bold text-purple-600">Date/Time:</span> {modalOpp.dateTime}
-                      </p>
-                    </div>
-                    <div>
-                      <p><span className="font-bold text-purple-600">Age Group:</span> {modalOpp.ageGroup}</p>
-                      <p>
-                        <span className="font-bold text-purple-600">Industry:</span>
-                        {modalOpp.tags.map((tag, i) => (
-                          <span key={i} className={`inline-block ml-2 px-2 py-1 rounded-full text-xs font-semibold ${getTagColor(tag)}`}>
-                            {tag}
-                          </span>
-                        ))}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mb-2"><span className="font-bold text-purple-600">Description:</span> {modalOpp.description}</p>
-                  <p><span className="font-bold text-purple-600">Contact:</span> {modalOpp.contact}</p>
-                </div>
-              </div>
-            )}
+            
 
             {emailModalOpen && (
               <div
@@ -575,16 +628,10 @@ export default function Home() {
                       {sending ? "Sending..." : "Send"}
                     </button>
                   </div>
-
-
-                </div>
-                
+                </div>              
               </div>
             )}
-
-
           </div>
         </div>
-
   );
 }
