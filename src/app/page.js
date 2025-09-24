@@ -20,7 +20,7 @@ function getTagColor(tag) {
     "Business": "bg-blue-200 text-blue-800",
     "Law/Legal": "bg-yellow-200 text-yellow-800",
     "Tech": "bg-cyan-200 text-cyan-800",
-    "Environment": "bg-green-600 text-white",
+    "Environment": "bg-lime-300 text-green-800",
     "Community": "bg-orange-200 text-orange-800",
     "STEM": "bg-teal-200 text-teal-800",
     "Education": "bg-teal-200 text-teal-800",
@@ -389,7 +389,7 @@ export default function Home() {
                 onMouseLeave={() => setHover(false)}
 
                 className={userLocationLabel ? 
-                  "bg-green-300 hover:bg-green-100 border border-green-500 text-gray-800 text-sm font-bold h-9 w-50 py-1.5 px-4 rounded-full cursor-pointer" 
+                  "bg-green-200 hover:bg-green-50 border border-green-500 text-blue-600 text-sm font-bold h-9 w-50 py-1.5 px-4 rounded-full cursor-pointer" 
                   : "bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-800 text-sm font-bold h-9 py-1.5 px-4 rounded-full cursor-pointer"}
                 onClick={() => {
                   if (userLocationLabel?.trim()){
@@ -410,7 +410,7 @@ export default function Home() {
                   : (userLocationLabel?.trim()
                       ? `Location: ${
                           ((userLocationLabel ?? "").trim().length > 13)
-                            ? ((userLocationLabel ?? "").trim().slice(0, 13) + "...")
+                            ? ((userLocationLabel ?? "").trim().slice(0, 12) + "...")
                             : ((userLocationLabel ?? "").trim())
                         }`
                       : "Set Location")
@@ -419,9 +419,9 @@ export default function Home() {
               </button>
 
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 h-10">
                 <Toggle checked={showRemoteOnly} onChange={setShowRemoteOnly} />
-                <span className="text-base font-semibold text-gray-700 select-none">
+                <span className="h-6.25 text-base font-semibold text-gray-700 select-none">
                   Remote Only
                 </span>
               </div>
