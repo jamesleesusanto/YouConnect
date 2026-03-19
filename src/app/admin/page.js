@@ -9,25 +9,25 @@ import { format } from "date-fns";
 
 const TYPES = ["Internship", "Workshop", "Event", "Volunteering"];
 const INDUSTRIES = ["Healthcare", "Activism", "Business", "Humanities", "Education", "Environment", "Community Service", "STEM"];
-const AGE_GROUPS = ["Elementary School", "Middle School", "High School", "College", "18+ Only", "All Ages"];
+const AGE_GROUPS = ["Youth", "High School", "College"];
 const LOCATION_MODES = ["In-Person", "Remote", "Hybrid"];
 
 const TIMEZONES = [
-  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
-  "America/Anchorage", "Pacific/Honolulu", "America/Phoenix",
-  "America/Indiana/Indianapolis", "America/Detroit",
+  { value: "EST", label: "EST (GMT-5)" },
+  { value: "CST", label: "CST (GMT-6)" },
+  { value: "MST", label: "MST (GMT-7)" },
+  { value: "PST", label: "PST (GMT-8)" },
+  { value: "AKT", label: "AKT (GMT-9)" },
+  { value: "HST", label: "HST (GMT-10)" },
+  { value: "EDT", label: "EDT (GMT-4)" },
+  { value: "CDT", label: "CDT (GMT-5)" },
+  { value: "MDT", label: "MDT (GMT-6)" },
+  { value: "PDT", label: "PDT (GMT-7)" },
 ];
-const TZ_LABELS = {
-  "America/New_York": "Eastern (ET)", "America/Chicago": "Central (CT)",
-  "America/Denver": "Mountain (MT)", "America/Los_Angeles": "Pacific (PT)",
-  "America/Anchorage": "Alaska (AKT)", "Pacific/Honolulu": "Hawaii (HT)",
-  "America/Phoenix": "Arizona (MST)", "America/Indiana/Indianapolis": "Indiana (ET)",
-  "America/Detroit": "Detroit (ET)",
-};
 
 const EMPTY = {
   name: "", opportunity_type: "", organization: "", location: "",
-  date: "", time: "", timezone: "America/New_York", tags: [], age_group: "",
+  date: "", time: "", timezone: "EST", tags: [], age_group: [],
   description: "", link: "", contact_email: "", status: "approved",
   location_mode: "In-Person", image_url: "", recurring_dates: [],
 };
@@ -174,13 +174,14 @@ export default function AdminPage() {
         organization: r["Organization Name"] || r.organization || "",
         location: r["City, State"] || r.location || "",
         date: r["EventDateTime"] ? r["EventDateTime"].split(" ")[0] : (r.date || ""),
-        time: r.time || "", tags, age_group: r.age_group || "",
+        time: r.time || "", tags,
+        age_group: Array.isArray(r.age_group) ? r.age_group : (r.age_group ? [r.age_group] : []),
         description: r["Detailed description of the event"] || r.description || "",
         link: r.link || "", contact_email: r["E-mail Address"] || r.contact_email || "",
         status: r.status || "approved",
         location_mode: r.location_mode || (r["Is the opportunity remote or in-person"] === "Remote" ? "Remote" : "In-Person"),
         image_url: r.image_url || "", recurring_dates: r.recurring_dates || [],
-        timezone: r.timezone || "America/New_York",
+        timezone: r.timezone || "EST",
       };
     }));
     setLoading(false);
@@ -213,14 +214,14 @@ export default function AdminPage() {
     if (!form.organization) missing.push("Organization");
     if (!form.location && form.location_mode !== "Remote") missing.push("Location");
     if (!form.opportunity_type) missing.push("Type");
-    if (!form.age_group) missing.push("Age Group");
+    if (!form.age_group || form.age_group.length === 0) missing.push("Age Group");
     if (!form.date) missing.push("Date");
     if (!form.time) missing.push("Time");
     if (!form.contact_email) missing.push("Contact Email");
     if (form.tags.length === 0) missing.push("Industry Tags (at least 1)");
     if (!form.description) missing.push("Description");
     if (missing.length > 0) { alert("Please fill in required fields:\n• " + missing.join("\n• ")); return; }
-    if (form.description.length > 1500) { alert("Description must be 1500 characters or fewer."); return; }
+    if (form.description.length > 1000) { alert("Description must be 1000 characters or fewer."); return; }
     setSaving(true);
     try {
       const db = getFirestore(app);
@@ -281,15 +282,38 @@ export default function AdminPage() {
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {/* Row 1: Name (full width) */}
-            <div className="sm:col-span-2"><label className={labelClass}>Name *</label><input value={form.name} onChange={(e) => up("name", e.target.value)} placeholder="e.g. Summer Volunteer Program" className={inputClass} /></div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Name * <span className="text-muted-foreground font-normal normal-case">({form.name.length}/40)</span></label>
+              <input value={form.name} onChange={(e) => { if (e.target.value.length <= 40) up("name", e.target.value); }} placeholder="e.g. Summer Volunteer Program" maxLength={40} className={inputClass} />
+            </div>
 
             {/* Row 2: Organization, Location */}
-            <div><label className={labelClass}>Organization *</label><input value={form.organization} onChange={(e) => up("organization", e.target.value)} className={inputClass} /></div>
+            <div>
+              <label className={labelClass}>Organization * <span className="text-muted-foreground font-normal normal-case">({form.organization.length}/30)</span></label>
+              <input value={form.organization} onChange={(e) => { if (e.target.value.length <= 30) up("organization", e.target.value); }} maxLength={30} className={inputClass} />
+            </div>
             <div><label className={labelClass}>Location *</label><input value={form.location} onChange={(e) => up("location", e.target.value)} placeholder="City, State" className={inputClass} /></div>
 
             {/* Row 3: Type, Age Group */}
             <div><label className={labelClass}>Type *</label><select value={form.opportunity_type} onChange={(e) => up("opportunity_type", e.target.value)} className={selectClass}><option value="">Select type</option>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
-            <div><label className={labelClass}>Age Group *</label><select value={form.age_group} onChange={(e) => up("age_group", e.target.value)} className={selectClass}><option value="">Select age group</option>{AGE_GROUPS.map((a) => <option key={a} value={a}>{a}</option>)}</select></div>
+            <div>
+              <label className={labelClass}>Age Group *</label>
+              <div className="flex gap-2">
+                {AGE_GROUPS.map((age) => {
+                  const sel = Array.isArray(form.age_group) && form.age_group.includes(age);
+                  return (
+                    <button key={age} type="button" onClick={() => {
+                      const arr = Array.isArray(form.age_group) ? form.age_group : [];
+                      up("age_group", sel ? arr.filter((a) => a !== age) : [...arr, age]);
+                    }}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition cursor-pointer ${sel ? "bg-primary text-primary-foreground border-primary" : "bg-white text-foreground border-border hover:bg-muted"}`}>
+                      {sel && <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      {age}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Row 4: Format (full width) */}
             <div className="sm:col-span-2">
@@ -330,7 +354,7 @@ export default function AdminPage() {
             <div className="sm:col-span-2">
               <label className={labelClass}>Timezone *</label>
               <select value={form.timezone} onChange={(e) => up("timezone", e.target.value)} className={selectClass}>
-                {TIMEZONES.map((tz) => <option key={tz} value={tz}>{TZ_LABELS[tz] || tz}</option>)}
+                {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
               </select>
             </div>
 
@@ -359,18 +383,18 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Row 9: Description * (full width, 1500 char limit) */}
+            {/* Row 9: Description * (full width, 1000 char limit) */}
             <div className="sm:col-span-2">
               <label className={labelClass}>Description *</label>
               <textarea
                 value={form.description}
-                onChange={(e) => { if (e.target.value.length <= 1500) up("description", e.target.value); }}
+                onChange={(e) => { if (e.target.value.length <= 400) up("description", e.target.value); }}
                 rows={3}
                 className={`${inputClass} resize-vertical`}
-                maxLength={1500}
+                maxLength={1000}
               />
-              <p className={`text-xs mt-1 ${form.description.length > 1400 ? "text-destructive" : "text-muted-foreground"}`}>
-                {form.description.length}/1,500 characters
+              <p className={`text-xs mt-1 ${form.description.length > 900 ? "text-destructive" : "text-muted-foreground"}`}>
+                {form.description.length}/1,000 characters
               </p>
             </div>
           </div>

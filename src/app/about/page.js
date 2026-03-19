@@ -1,54 +1,76 @@
 "use client";
 
-const VALUES = [
-  { title: "Community First", desc: "We believe every student deserves access to meaningful opportunities in their community, regardless of background.", icon: "M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-  { title: "Bridge the Gap", desc: "We connect young people directly with nonprofits and organizations that need their passion and energy.", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
-  { title: "Empower Youth", desc: "High school students are capable of incredible impact. We give them the tools to find where they fit.", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" },
-  { title: "Open Access", desc: "Our platform is free for students and organizations, making community service accessible to everyone.", icon: "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" },
-];
+import Link from "next/link";
 
 export default function AboutPage() {
   return (
     <div>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/30" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
-          <div className="max-w-2xl">
-            <p className="text-primary font-semibold text-sm uppercase tracking-wider mb-3">About Us</p>
-            <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight leading-tight">Connecting students with the world around them.</h1>
-            <p className="text-lg text-muted-foreground mt-6 leading-relaxed">YouDemonia was created by students, for students. We saw how hard it was to find volunteering, internships, and community events — so we built a platform to make it effortless.</p>
+      {/* Our Story */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight mb-10">Our Story</h1>
+        <div className="grid md:grid-cols-[1fr_320px] gap-12 items-start">
+          <div className="space-y-6 text-[15px] leading-relaxed text-foreground">
+            <p>
+              Despite being one of the fastest growing economic hubs in The United States,
+              Detroit, MI, has one major problem - an all-time low{" "}
+              <a href="https://www.bridgemi.com/talent-education/michigan-college-enrollment-decline" className="text-primary hover:underline">
+                51% of students are enrolling in higher education programs
+              </a>
+              . Given the{" "}
+              <a href="https://www.census.gov/quickfacts/detroitcitymichigan" className="text-primary hover:underline">
+                31.5+% of the population living below the poverty line
+              </a>
+              , for most families, every dollar and minute is put towards putting food on the table,
+              leaving academic opportunities widely unused. And it&apos;s not just Detroit; students
+              all over the world are trapped in a poverty cycle where they do not have exposure to
+              the resources they need to break out and succeed.
+            </p>
+            <p>
+              Youdemonia was founded in 2020 to combat social disparities through community-based
+              events and has since refocused{" "}
+              <Link href="/about" className="text-primary hover:underline">
+                to specifically promote opportunity awareness for students
+              </Link>
+              . Since our beginnings in early 2020, we&apos;ve been driven by the same ideas we
+              initially founded our organization upon: support, empowerment, and progress.
+            </p>
           </div>
-        </div>
-      </section>
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground tracking-tight">Our Mission</h2>
-            <p className="text-muted-foreground mt-4 leading-relaxed">We&apos;re on a mission to eliminate the barriers between high school students and impactful community experiences. Whether it&apos;s a weekend volunteer event, a summer internship at a nonprofit, or a workshop to build skills — we want every student to find it in one place.</p>
-            <p className="text-muted-foreground mt-4 leading-relaxed">We partner with nonprofits, community organizations, and schools to curate a diverse range of opportunities across industries like healthcare, education, environment, STEM, and more.</p>
-          </div>
-          <div className="relative">
-            <div className="aspect-square rounded-3xl bg-gradient-to-br from-primary/10 to-accent overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1529390079861-591de354faf5?w=600&h=600&fit=crop" alt="Students collaborating" className="w-full h-full object-cover mix-blend-multiply" />
+          <div className="flex flex-col items-center">
+            <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-muted">
+              <img
+                src="https://images.unsplash.com/photo-1529390079861-591de354faf5?w=600&h=450&fit=crop"
+                alt="YouDemonia Team"
+                className="w-full h-full object-cover"
+              />
             </div>
+            <Link
+              href="/team"
+              className="mt-3 text-primary font-semibold text-sm tracking-wider uppercase hover:underline"
+            >
+              Meet The Team
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="bg-muted/50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-foreground tracking-tight text-center mb-12">What We Stand For</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {VALUES.map((v) => (
-              <div key={v.title} className="bg-white rounded-2xl p-6 border border-border/40 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                  <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={v.icon} /></svg>
-                </div>
-                <h3 className="font-semibold text-foreground text-lg">{v.title}</h3>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{v.desc}</p>
-              </div>
-            ))}
+      {/* What is Opportunity Awareness */}
+      <section className="bg-white py-16 sm:py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight text-center mb-10">
+            What is Opportunity Awareness?
+          </h2>
+          <div className="space-y-6 text-[15px] leading-relaxed">
+            <p className="text-foreground">
+              Opportunity Awareness is &quot;the ability of students to know about work opportunities and their requirements&quot;
+            </p>
+            <p className="text-foreground">
+              At Youdemonia, our goal is to promote Opportunity Awareness!
+            </p>
+            <p className="text-primary italic">
+              (In simple terms, there are thousands of resources geared towards students that go unused because
+              they simply don&apos;t know about them. At Youdemonia, we work to increase the accessibility to
+              these resources by creating an easy-access one stop shop for all academic and pre-professional opportunities)
+            </p>
           </div>
         </div>
       </section>

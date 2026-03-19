@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: "YouConnect Platform", path: "/opportunities" },
   { label: "About", path: "/about" },
   { label: "Tutorials", path: "/tutorials" },
-  { label: "Our Events", path: "/events" },
+  { label: "Past Events", path: "/past-events" },
   { label: "Press", path: "/press" },
   { label: "Contact Us", path: "/contact" },
   { label: "Organizer's Portal", path: "/organizer" },
