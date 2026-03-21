@@ -47,7 +47,64 @@ export default function PlatformPage() {
   const [modalOpp, setModalOpp] = useState(null);
   const [imgOrientation, setImgOrientation] = useState("landscape");
   const [enlargeImg, setEnlargeImg] = useState(false);
+  const [locationSort, setLocationSort] = useState(false);
+  const [zipInput, setZipInput] = useState("");
+  const [zipModalOpen, setZipModalOpen] = useState(false);
+  const [userCoords, setUserCoords] = useState(null);
+  const [geoCache, setGeoCache] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem("youconnect_geocache") || "{}"); } catch { return {}; }
+  });
+  const [geoLoading, setGeoLoading] = useState(false);
   const perPage = 15;
+
+  // Haversine distance in miles
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  async function geocode(location) {
+    if (!location) return null;
+    const key = location.trim().toLowerCase();
+    if (geoCache[key]) return geoCache[key];
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1&countrycodes=us`);
+      const data = await res.json();
+      if (data && data[0]) {
+        const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        const newCache = { ...geoCache, [key]: coords };
+        setGeoCache(newCache);
+        localStorage.setItem("youconnect_geocache", JSON.stringify(newCache));
+        return coords;
+      }
+    } catch (e) { /* silent */ }
+    return null;
+  }
+
+  async function enableLocationSort() {
+    if (!zipInput) return;
+    setGeoLoading(true);
+    const coords = await geocode(zipInput);
+    if (!coords) { alert("Could not find that zip code. Please try again."); setGeoLoading(false); return; }
+    setUserCoords(coords);
+    // Geocode all opportunity zip codes (much more accurate than city names)
+    for (const opp of opportunities) {
+      if (opp.location_mode === "Remote") continue;
+      const zipKey = opp.zip || "";
+      const locKey = zipKey || opp.location;
+      if (locKey && !geoCache[locKey.trim().toLowerCase()]) {
+        await geocode(locKey);
+        await new Promise((r) => setTimeout(r, 1100));
+      }
+    }
+    setLocationSort(true);
+    setZipModalOpen(false);
+    setGeoLoading(false);
+  }
 
   function openModal(opp) {
     setModalOpp(opp);
@@ -76,7 +133,8 @@ export default function PlatformPage() {
           name: raw["What is the name of your opportunity?"] || raw.name || "",
           opportunity_type: raw["Opportunity Type"] || raw.opportunity_type || "",
           organization: raw["Organization Name"] || raw.organization || "",
-          location: raw["City, State"] || raw.location || "",
+          location: raw.city && raw.state ? `${raw.city}, ${raw.state}` : (raw["City, State"] || raw.location || ""),
+          zip: raw.zip || "",
           date: raw["EventDateTime"] ? raw["EventDateTime"].split(" ")[0] : (raw.date || ""),
           time: raw.time || "",
           industry: raw.industry || "",
@@ -121,8 +179,18 @@ export default function PlatformPage() {
       return filters.ageGroups.some((f) => oAges.includes(f));
     });
     if (filters.types.length > 0) result = result.filter((o) => filters.types.includes(o.opportunity_type));
+    // Distance sorting
+    if (locationSort && userCoords) {
+      result = result.map((o) => {
+        if (o.location_mode === "Remote") return { ...o, _dist: 99999 };
+        const locKey = (o.zip || o.location || "").trim().toLowerCase();
+        const coords = locKey ? geoCache[locKey] : null;
+        const dist = coords ? haversine(userCoords.lat, userCoords.lng, coords.lat, coords.lng) : 99998;
+        return { ...o, _dist: dist };
+      }).sort((a, b) => a._dist - b._dist);
+    }
     return result;
-  }, [opportunities, filters, favorites, showFavorites]);
+  }, [opportunities, filters, favorites, showFavorites, locationSort, userCoords, geoCache]);
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -301,6 +369,15 @@ export default function PlatformPage() {
 
       {/* Action Bar */}
       <div className="flex flex-wrap items-center gap-3 mt-6 mb-4">
+        {/* Location sorting toggle */}
+        <button onClick={() => {
+          if (locationSort) { setLocationSort(false); }
+          else { setZipModalOpen(true); }
+        }} className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border cursor-pointer transition ${locationSort ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          {locationSort ? `Sorted by distance from ${zipInput}` : "Sort by Distance"}
+        </button>
+
         <button onClick={() => setShowFavorites(!showFavorites)} className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border cursor-pointer transition ${showFavorites ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
           <svg className={`w-4 h-4 ${showFavorites ? "fill-white" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
           Favorites ({favorites.size})
@@ -511,6 +588,43 @@ export default function PlatformPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Zip Code Modal */}
+      {zipModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setZipModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setZipModalOpen(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted hover:bg-muted-foreground/10 flex items-center justify-center text-foreground cursor-pointer">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Sort by Distance</h3>
+                <p className="text-sm text-muted-foreground">Enter your zip code to sort opportunities by distance.</p>
+              </div>
+            </div>
+            <label className="block text-xs font-bold text-primary uppercase tracking-wide mb-1.5">Zip Code</label>
+            <input
+              type="text"
+              value={zipInput}
+              onChange={(e) => setZipInput(e.target.value.replace(/\D/g, "").substring(0, 5))}
+              placeholder="e.g. 48167"
+              className="w-full px-4 py-3 border border-border rounded-lg text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-[system-ui]"
+              onKeyDown={(e) => { if (e.key === "Enter" && zipInput.length === 5) enableLocationSort(); }}
+            />
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setZipModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border text-muted-foreground text-sm font-medium hover:bg-muted cursor-pointer">Cancel</button>
+              <button onClick={enableLocationSort} disabled={zipInput.length !== 5 || geoLoading} className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 cursor-pointer transition flex items-center justify-center gap-2">
+                {geoLoading ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Loading...</>
+                ) : "Sort"}
+              </button>
+            </div>
           </div>
         </div>
       )}

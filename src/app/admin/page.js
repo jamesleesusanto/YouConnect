@@ -26,20 +26,23 @@ const TAG_COLORS = {
 };
 
 const TIMEZONES = [
+  { value: "EDT", label: "EDT (GMT-4)" },
   { value: "EST", label: "EST (GMT-5)" },
+  { value: "CDT", label: "CDT (GMT-5)" },
   { value: "CST", label: "CST (GMT-6)" },
+  { value: "MDT", label: "MDT (GMT-6)" },
   { value: "MST", label: "MST (GMT-7)" },
+  { value: "PDT", label: "PDT (GMT-7)" },
   { value: "PST", label: "PST (GMT-8)" },
   { value: "AKT", label: "AKT (GMT-9)" },
   { value: "HST", label: "HST (GMT-10)" },
-  { value: "EDT", label: "EDT (GMT-4)" },
-  { value: "CDT", label: "CDT (GMT-5)" },
-  { value: "MDT", label: "MDT (GMT-6)" },
-  { value: "PDT", label: "PDT (GMT-7)" },
 ];
 
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
+
 const EMPTY = {
-  name: "", opportunity_type: "", organization: "", location: "",
+  name: "", opportunity_type: "", organization: "",
+  city: "", state: "", zip: "", location: "",
   date: "", time: "", timezone: "EST", tags: [], age_group: [],
   description: "", link: "", contact_email: "", status: "approved",
   location_mode: "In-Person", image_url: "", recurring_dates: [],
@@ -172,6 +175,8 @@ export default function AdminPage() {
   const [rawClicks, setRawClicks] = useState([]);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [chartFilter, setChartFilter] = useState([]); // empty = all
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => { if (!authLoading && !user) router.push("/login"); }, [user, authLoading, router]);
   useEffect(() => { if (user) { fetchOpps(); fetchAnalytics(); } }, [user]);
@@ -209,7 +214,8 @@ export default function AdminPage() {
         id: d.id, name: r["What is the name of your opportunity?"] || r.name || "",
         opportunity_type: r["Opportunity Type"] || r.opportunity_type || "",
         organization: r["Organization Name"] || r.organization || "",
-        location: r["City, State"] || r.location || "",
+        city: r.city || "", state: r.state || "", zip: r.zip || "",
+        location: r.city && r.state ? `${r.city}, ${r.state}` : (r["City, State"] || r.location || ""),
         date: r["EventDateTime"] ? r["EventDateTime"].split(" ")[0] : (r.date || ""),
         time: r.time || "", tags,
         age_group: Array.isArray(r.age_group) ? r.age_group : (r.age_group ? [r.age_group] : []),
@@ -249,7 +255,8 @@ export default function AdminPage() {
     const missing = [];
     if (!form.name) missing.push("Name");
     if (!form.organization) missing.push("Organization");
-    if (!form.location && form.location_mode !== "Remote") missing.push("Location");
+    if (!form.city && form.location_mode !== "Remote") missing.push("Location (select from dropdown)");
+    if (form.city && !form.state && form.location_mode !== "Remote") missing.push("Location (incomplete — please select from dropdown)");
     if (!form.opportunity_type) missing.push("Type");
     if (!form.age_group || form.age_group.length === 0) missing.push("Age Group");
     if (!form.date) missing.push("Date");
@@ -267,7 +274,10 @@ export default function AdminPage() {
     setSaving(true);
     try {
       const db = getFirestore(app);
-      const data = { ...form }; delete data.id;
+      const data = { ...form };
+      delete data.id;
+      // Build combined location string
+      if (data.city && data.state) data.location = `${data.city}, ${data.state}`;
       if (editId) await updateDoc(doc(db, "opportunities", editId), data);
       else await addDoc(collection(db, "opportunities"), data);
       setShowForm(false); setEditId(null); setForm({ ...EMPTY });
@@ -348,31 +358,80 @@ export default function AdminPage() {
             </div>
 
             <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-8">
-              {/* Chart Filter */}
-              <div className="mb-6">
-                <div className="text-xs font-bold text-primary uppercase tracking-wide mb-2">Filter by Opportunity</div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => setChartFilter([])}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${chartFilter.length === 0 ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
-                    All Combined
-                  </button>
-                  {opps.map((o) => {
-                    const sel = chartFilter.includes(o.id);
-                    return (
-                      <button key={o.id} onClick={() => setChartFilter((prev) => sel ? prev.filter((id) => id !== o.id) : [...prev, o.id])}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${sel ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
-                        {sel && <svg className="w-3 h-3 inline mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                        {o.name}
-                      </button>
-                    );
-                  })}
+              {/* Filters row: date range + opportunity dropdown + download */}
+              <div className="flex flex-wrap items-end gap-4 mb-6">
+                <div>
+                  <label className="text-xs font-bold text-primary uppercase tracking-wide">From</label>
+                  <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block mt-1 px-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-primary" />
                 </div>
+                <div>
+                  <label className="text-xs font-bold text-primary uppercase tracking-wide">To</label>
+                  <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block mt-1 px-3 py-2 border border-border rounded-lg text-sm outline-none focus:border-primary" />
+                </div>
+
+                {/* Opportunity filter dropdown */}
+                <div className="relative group">
+                  <button className={`h-[42px] px-4 rounded-lg text-sm font-medium border transition cursor-pointer inline-flex items-center gap-2 ${chartFilter.length > 0 ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
+                    <span className="text-xs font-bold uppercase tracking-wide">Opportunities</span>
+                    {chartFilter.length > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{chartFilter.length}</span>}
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  <div className="absolute top-full left-0 mt-1 bg-white border border-border/60 rounded-xl shadow-lg p-2 w-64 z-50 hidden group-hover:block max-h-64 overflow-y-auto">
+                    <div className="flex justify-end items-center mb-1 px-2">
+                      <button onClick={() => setChartFilter((prev) => prev.length === opps.length ? [] : opps.map((o) => o.id))} className="text-[11px] text-primary hover:underline cursor-pointer font-medium">
+                        {chartFilter.length === opps.length || chartFilter.length === 0 ? "Deselect all" : "Select all"}
+                      </button>
+                    </div>
+                    {opps.map((o) => {
+                      const sel = chartFilter.includes(o.id);
+                      return (
+                        <label key={o.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted cursor-pointer">
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition ${sel ? "bg-primary border-primary" : "border-border"}`}>
+                            {sel && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <span className="text-sm text-foreground truncate">{o.name}</span>
+                          <input type="checkbox" checked={sel} onChange={() => setChartFilter((prev) => sel ? prev.filter((id) => id !== o.id) : [...prev, o.id])} className="hidden" />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Download button */}
+                <button onClick={() => {
+                  const rows = [["Opportunity", "More Info Clicks", "Learn More Clicks", "Total"]];
+                  opps.forEach((o) => {
+                    const a = analytics[o.id] || { more_info: 0, learn_more: 0 };
+                    rows.push([o.name, a.more_info, a.learn_more, a.more_info + a.learn_more]);
+                  });
+                  rows.push([]);
+                  rows.push(["Raw Click Log"]);
+                  rows.push(["Opportunity", "Click Type", "Timestamp"]);
+                  const nameMap = {};
+                  opps.forEach((o) => { nameMap[o.id] = o.name; });
+                  rawClicks.forEach((c) => {
+                    rows.push([nameMap[c.id] || c.id, c.type, c.timestamp]);
+                  });
+                  const csv = rows.map((r) => r.map((v) => `"${String(v || "").replace(/"/g, '""')}"`).join(",")).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "youconnect-analytics.csv"; a.click();
+                }} className="h-[42px] px-4 rounded-lg text-sm font-medium border border-border/60 bg-white hover:bg-muted cursor-pointer inline-flex items-center gap-2 transition">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Download CSV
+                </button>
+
+                {(dateFrom || dateTo) && (
+                  <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="h-[42px] text-sm text-muted-foreground hover:text-destructive flex items-center gap-1 cursor-pointer">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>Clear dates
+                  </button>
+                )}
               </div>
 
               {/* SVG Chart */}
               {(() => {
-                const filteredClicks = chartFilter.length === 0 ? rawClicks : rawClicks.filter((c) => chartFilter.includes(c.id));
-                // Group by date
+                let filteredClicks = chartFilter.length === 0 ? rawClicks : rawClicks.filter((c) => chartFilter.includes(c.id));
+                if (dateFrom) filteredClicks = filteredClicks.filter((c) => c.timestamp >= dateFrom);
+                if (dateTo) filteredClicks = filteredClicks.filter((c) => c.timestamp <= dateTo + "T23:59:59");
                 const byDate = {};
                 filteredClicks.forEach((c) => {
                   const day = c.timestamp ? c.timestamp.substring(0, 10) : "unknown";
@@ -383,7 +442,7 @@ export default function AdminPage() {
                 if (dates.length === 0) return (
                   <div className="bg-muted/30 rounded-xl p-12 text-center mb-8">
                     <svg className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                    <p className="text-sm text-muted-foreground">No click data yet. Clicks will appear here as students interact with opportunities.</p>
+                    <p className="text-sm text-muted-foreground">No click data for this range. Clicks will appear as students interact with opportunities.</p>
                   </div>
                 );
 
@@ -498,25 +557,24 @@ export default function AdminPage() {
             <h2 className="text-lg font-bold text-foreground">{editId ? "Edit Opportunity" : "Create New Opportunity"}</h2>
             <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-2xl cursor-pointer">&times;</button>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Row 1: Name (full width) */}
-            <div className="sm:col-span-2">
+            <div className="lg:col-span-4">
               <label className={labelClass}>Name * <span className="text-muted-foreground font-normal normal-case">({form.name.length}/40)</span></label>
               <input value={form.name} onChange={(e) => { if (e.target.value.length <= 40) up("name", e.target.value); }} placeholder="e.g. Summer Volunteer Program" maxLength={40} className={inputClass} />
             </div>
 
-            {/* Row 2: Organization, Location */}
-            <div>
+            {/* Row 2: Organization, Type */}
+            <div className="lg:col-span-2">
               <label className={labelClass}>Organization * <span className="text-muted-foreground font-normal normal-case">({form.organization.length}/30)</span></label>
               <input value={form.organization} onChange={(e) => { if (e.target.value.length <= 30) up("organization", e.target.value); }} maxLength={30} className={inputClass} />
             </div>
-            <div><label className={labelClass}>Location *</label><input value={form.location} onChange={(e) => up("location", e.target.value)} placeholder="City, State" className={inputClass} /></div>
+            <div className="lg:col-span-2"><label className={labelClass}>Type *</label><select value={form.opportunity_type} onChange={(e) => up("opportunity_type", e.target.value)} className={selectClass}><option value="">Select type</option>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
 
-            {/* Row 3: Type, Age Group */}
-            <div><label className={labelClass}>Type *</label><select value={form.opportunity_type} onChange={(e) => up("opportunity_type", e.target.value)} className={selectClass}><option value="">Select type</option>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
-            <div>
+            {/* Row 3: Age Group (full width, evenly spaced) */}
+            <div className="lg:col-span-4">
               <label className={labelClass}>Age Group *</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {AGE_GROUPS.map((age) => {
                   const sel = Array.isArray(form.age_group) && form.age_group.includes(age);
                   return (
@@ -524,7 +582,7 @@ export default function AdminPage() {
                       const arr = Array.isArray(form.age_group) ? form.age_group : [];
                       up("age_group", sel ? arr.filter((a) => a !== age) : [...arr, age]);
                     }}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition cursor-pointer ${sel ? "bg-primary text-primary-foreground border-primary" : "bg-white text-foreground border-border hover:bg-muted"}`}>
+                      className={`py-2.5 rounded-lg text-sm font-medium border transition cursor-pointer ${sel ? "bg-primary text-primary-foreground border-primary" : "bg-white text-foreground border-border hover:bg-muted"}`}>
                       {sel && <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                       {age}
                     </button>
@@ -534,12 +592,12 @@ export default function AdminPage() {
             </div>
 
             {/* Row 4: Format (full width) */}
-            <div className="sm:col-span-2">
+            <div className="lg:col-span-4">
               <label className={labelClass}>Format *</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {LOCATION_MODES.map((mode) => (
                   <button key={mode} type="button" onClick={() => up("location_mode", mode)}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition cursor-pointer ${form.location_mode === mode ? "bg-primary text-primary-foreground border-primary" : "bg-white text-foreground border-border hover:bg-muted"}`}>
+                    className={`py-2.5 rounded-lg text-sm font-medium border transition cursor-pointer ${form.location_mode === mode ? "bg-primary text-primary-foreground border-primary" : "bg-white text-foreground border-border hover:bg-muted"}`}>
                     {mode === "Remote" && <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
                     {mode}
                   </button>
@@ -547,8 +605,65 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Row 5: Location autocomplete (only if In-Person or Hybrid) */}
+            {form.location_mode !== "Remote" && (
+              <div className="lg:col-span-4 relative">
+                <label className={labelClass}>Location *</label>
+                <input
+                  value={form._locationQuery !== undefined ? form._locationQuery : (form.city && form.state ? `${form.city}, ${form.state} ${form.zip || ""}`.trim() : "")}
+                  onChange={async (e) => {
+                    const q = e.target.value;
+                    up("_locationQuery", q);
+                    up("city", ""); up("state", ""); up("zip", ""); up("location", "");
+                    if (q.length < 2) { up("_locationResults", []); return; }
+                    try {
+                      // Run two parallel searches for better coverage of small towns
+                      const [res1, res2] = await Promise.all([
+                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=us&limit=10&addressdetails=1&featuretype=city`),
+                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + " city USA")}&countrycodes=us&limit=10&addressdetails=1`),
+                      ]);
+                      const [data1, data2] = await Promise.all([res1.json(), res2.json()]);
+                      const all = [...data1, ...data2];
+                      const seen = new Set();
+                      const results = [];
+                      for (const r of all) {
+                        const a = r.address || {};
+                        const city = a.city || a.town || a.village || a.hamlet || a.municipality || a.suburb || "";
+                        const stateCode = a["ISO3166-2-lvl4"]?.split("-")[1] || "";
+                        const zip = (a.postcode || "").split("-")[0].split(";")[0].trim();
+                        if (!city || !stateCode) continue;
+                        const key = `${city.toLowerCase()}-${stateCode}`;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+                        results.push({ display: `${city}, ${stateCode}${zip ? " " + zip : ""}`, city, state: stateCode, zip });
+                        if (results.length >= 8) break;
+                      }
+                      up("_locationResults", results);
+                    } catch { up("_locationResults", []); }
+                  }}
+                  placeholder="Start typing a city name..."
+                  className={inputClass}
+                />
+                {form._locationResults?.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border/60 rounded-xl shadow-lg z-40 overflow-hidden max-h-64 overflow-y-auto">
+                    {form._locationResults.map((r, i) => (
+                      <button key={i} type="button" onClick={() => {
+                        up("city", r.city); up("state", r.state); up("zip", r.zip);
+                        up("location", `${r.city}, ${r.state}`);
+                        up("_locationQuery", r.display);
+                        up("_locationResults", []);
+                      }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-accent/50 cursor-pointer transition flex items-center gap-2 border-b border-border/20 last:border-0">
+                        <svg className="w-4 h-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span className="text-foreground">{r.display}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Row 5: Industry Tags (full width) */}
-            <div className="sm:col-span-2">
+            <div className="lg:col-span-4">
               <label className={labelClass}>Industry Tags * <span className="text-muted-foreground font-normal normal-case">(select up to 3)</span></label>
               <div className="flex flex-wrap gap-2">
                 {INDUSTRIES.map((tag) => {
@@ -569,7 +684,7 @@ export default function AdminPage() {
             {/* Row 6: Date, Time *, Timezone */}
             <div><label className={labelClass}>Date *</label><input type="date" value={form.date} onChange={(e) => up("date", e.target.value)} className={inputClass} /></div>
             <div><label className={labelClass}>Time *</label><input type="time" value={form.time} onChange={(e) => up("time", e.target.value)} className={inputClass} required /></div>
-            <div className="sm:col-span-2">
+            <div className="lg:col-span-4">
               <label className={labelClass}>Timezone *</label>
               <select value={form.timezone} onChange={(e) => up("timezone", e.target.value)} className={selectClass}>
                 {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
@@ -602,7 +717,7 @@ export default function AdminPage() {
             </div>
 
             {/* Row 9: Description * (full width, 1000 char limit) */}
-            <div className="sm:col-span-2">
+            <div className="lg:col-span-4">
               <label className={labelClass}>Description *</label>
               <textarea
                 value={form.description}
