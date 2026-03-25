@@ -282,7 +282,8 @@ export default function PlatformPage() {
               {filters.industries.length > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filters.industries.length}</span>}
               <svg className="w-3.5 h-3.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-white border border-border/60 rounded-xl shadow-lg p-2 w-56 z-40 hidden group-hover:block">
+            <div className="absolute top-full left-0 pt-2 z-40 hidden group-hover:block">
+              <div className="bg-white border border-border/60 rounded-xl shadow-lg p-2 w-56">
               <div className="flex justify-end mb-1">
                 <button onClick={() => setFilters((p) => ({ ...p, industries: p.industries.length === INDUSTRIES.length ? [] : [...INDUSTRIES] }))} className="text-[11px] text-primary hover:underline cursor-pointer font-medium">
                   {filters.industries.length === INDUSTRIES.length ? "Deselect all" : "Select all"}
@@ -300,6 +301,7 @@ export default function PlatformPage() {
                   </label>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -310,7 +312,8 @@ export default function PlatformPage() {
               {filters.ageGroups.length > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filters.ageGroups.length}</span>}
               <svg className="w-3.5 h-3.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-white border border-border/60 rounded-xl shadow-lg p-2 w-48 z-40 hidden group-hover:block">
+            <div className="absolute top-full left-0 pt-2 z-40 hidden group-hover:block">
+              <div className="bg-white border border-border/60 rounded-xl shadow-lg p-2 w-48">
               <div className="flex justify-end mb-1">
                 <button onClick={() => setFilters((p) => ({ ...p, ageGroups: p.ageGroups.length === AGE_GROUPS.length ? [] : [...AGE_GROUPS] }))} className="text-[11px] text-primary hover:underline cursor-pointer font-medium">
                   {filters.ageGroups.length === AGE_GROUPS.length ? "Deselect all" : "Select all"}
@@ -328,6 +331,7 @@ export default function PlatformPage() {
                   </label>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -338,7 +342,8 @@ export default function PlatformPage() {
               {filters.types.length > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filters.types.length}</span>}
               <svg className="w-3.5 h-3.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-white border border-border/60 rounded-xl shadow-lg p-2 w-48 z-40 hidden group-hover:block">
+            <div className="absolute top-full left-0 pt-2 z-40 hidden group-hover:block">
+              <div className="bg-white border border-border/60 rounded-xl shadow-lg p-2 w-48">
               <div className="flex justify-end mb-1">
                 <button onClick={() => setFilters((p) => ({ ...p, types: p.types.length === TYPES.length ? [] : [...TYPES] }))} className="text-[11px] text-primary hover:underline cursor-pointer font-medium">
                   {filters.types.length === TYPES.length ? "Deselect all" : "Select all"}
@@ -356,6 +361,7 @@ export default function PlatformPage() {
                   </label>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -513,12 +519,12 @@ export default function PlatformPage() {
               </div>
               {/* Right side image panel — all images go here */}
               {modalOpp.image_url && (
-                <div className="hidden sm:flex w-[320px] shrink-0 bg-muted/30 items-center justify-center rounded-r-2xl overflow-hidden relative">
-                  <img src={modalOpp.image_url} alt={modalOpp.name} className="w-full h-full object-contain p-2" />
-                  <button onClick={(e) => { e.stopPropagation(); setEnlargeImg(true); }} className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white text-xs font-medium cursor-pointer flex items-center gap-1.5 transition">
+                <div className="hidden sm:flex w-[320px] shrink-0 bg-muted/30 items-center justify-center rounded-r-2xl overflow-hidden relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setEnlargeImg(true); }}>
+                  <img src={modalOpp.image_url} alt={modalOpp.name} onClick={(e) => { e.stopPropagation(); setEnlargeImg(true); }} className="w-full h-full object-contain p-2 cursor-pointer hover:opacity-90 transition" />
+                  <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white text-xs font-medium flex items-center gap-1.5 transition pointer-events-none">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
                     Enlarge
-                  </button>
+                  </div>
                 </div>
               )}
             </div>

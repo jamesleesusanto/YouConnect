@@ -12,13 +12,21 @@ const NAV_LINKS = [
   { label: "Past Events", path: "/past-events" },
   { label: "Press", path: "/press" },
   { label: "Contact Us", path: "/contact" },
-  { label: "Organizer's Portal", path: "/organizer" },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, logout, loading } = useAuth();
+  const { user, userRole, roleStatus, logout, loading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const showAdminPortal = user && (userRole === "organizer" || userRole === "master") && roleStatus === "active";
+
+  const allLinks = [...NAV_LINKS];
+  if (showAdminPortal) {
+    allLinks.push({ label: "Admin Portal", path: "/admin" });
+  } else if (user && userRole === "organizer" && roleStatus === "pending") {
+    allLinks.push({ label: "Admin Portal ⏳", path: "/admin" });
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border/50">
@@ -33,28 +41,19 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <nav className="hidden xl:flex items-center gap-1">
-            {NAV_LINKS.map((link) => {
-              // Only show admin link if logged in
-              if (link.path === "/organizer" && !user) return null;
-              // Show admin link to logged-in users
-              const adminLink = link.path === "/organizer" && user
-                ? { ...link, path: "/admin", label: "Admin Portal" }
-                : link;
-
-              return (
-                <Link
-                  key={adminLink.path}
-                  href={adminLink.path}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    pathname === adminLink.path
-                      ? "text-primary bg-accent"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {adminLink.label}
-                </Link>
-              );
-            })}
+            {allLinks.map((link) => (
+              <Link
+                key={link.path}
+                href={link.path}
+                className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  pathname === link.path
+                    ? "text-primary bg-accent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
 
           {/* Auth + Mobile */}
@@ -113,26 +112,20 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="xl:hidden border-t border-border/50 bg-white">
           <nav className="max-w-7xl mx-auto px-4 py-3 space-y-1">
-            {NAV_LINKS.map((link) => {
-              if (link.path === "/organizer" && !user) return null;
-              const adminLink = link.path === "/organizer" && user
-                ? { ...link, path: "/admin", label: "Admin Portal" }
-                : link;
-              return (
-                <Link
-                  key={adminLink.path}
-                  href={adminLink.path}
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    pathname === adminLink.path
-                      ? "text-primary bg-accent"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {adminLink.label}
-                </Link>
-              );
-            })}
+            {allLinks.map((link) => (
+              <Link
+                key={link.path}
+                href={link.path}
+                onClick={() => setMobileOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  pathname === link.path
+                    ? "text-primary bg-accent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
             <div className="pt-3 border-t border-border/50">
               {user ? (
                 <div className="flex items-center justify-between px-4 py-2">

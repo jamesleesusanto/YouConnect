@@ -40,6 +40,7 @@ const TIMEZONES = [
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
 
+
 const EMPTY = {
   name: "", opportunity_type: "", organization: "",
   city: "", state: "", zip: "", location: "",
@@ -160,7 +161,7 @@ function RecurringDatesPicker({ dates, onChange }) {
 }
 
 export default function AdminPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, userRole, roleStatus } = useAuth();
   const router = useRouter();
   const [opps, setOpps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -174,12 +175,45 @@ export default function AdminPage() {
   const [analytics, setAnalytics] = useState({});
   const [rawClicks, setRawClicks] = useState([]);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [chartFilter, setChartFilter] = useState([]); // empty = all
+  const [chartFilter, setChartFilter] = useState([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [showManageUsers, setShowManageUsers] = useState(false);
+
+  const isMaster = userRole === "master";
 
   useEffect(() => { if (!authLoading && !user) router.push("/login"); }, [user, authLoading, router]);
-  useEffect(() => { if (user) { fetchOpps(); fetchAnalytics(); } }, [user]);
+  useEffect(() => {
+    if (user && userRole) {
+      if (userRole === "student") { router.push("/opportunities"); return; }
+      fetchOpps();
+      fetchAnalytics();
+      if (isMaster) fetchPendingUsers();
+    }
+  }, [user, userRole]);
+
+  async function fetchPendingUsers() {
+    try {
+      const db = getFirestore(app);
+      const snap = await getDocs(collection(db, "user_roles"));
+      setPendingUsers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((u) => u.role === "organizer" && u.status === "pending"));
+    } catch {}
+  }
+
+  async function approveUser(uid) {
+    const db = getFirestore(app);
+    const { updateDoc: updateDocument } = await import("firebase/firestore");
+    await updateDocument(doc(db, "user_roles", uid), { status: "active" });
+    await fetchPendingUsers();
+  }
+
+  async function denyUser(uid) {
+    const db = getFirestore(app);
+    const { updateDoc: updateDocument } = await import("firebase/firestore");
+    await updateDocument(doc(db, "user_roles", uid), { status: "denied", role: "student" });
+    await fetchPendingUsers();
+  }
 
   async function fetchAnalytics() {
     try {
@@ -205,7 +239,7 @@ export default function AdminPage() {
     setLoading(true);
     const db = getFirestore(app);
     const snap = await getDocs(collection(db, "opportunities"));
-    setOpps(snap.docs.map((d) => {
+    const allOpps = snap.docs.map((d) => {
       const r = d.data();
       let tags = r.tags || [];
       if (!Array.isArray(tags) && typeof tags === "string") tags = tags.split(",").map((t) => t.trim()).filter(Boolean);
@@ -225,8 +259,12 @@ export default function AdminPage() {
         location_mode: r.location_mode || (r["Is the opportunity remote or in-person"] === "Remote" ? "Remote" : "In-Person"),
         image_url: r.image_url || "", recurring_dates: r.recurring_dates || [],
         timezone: r.timezone || "EST",
+        created_by: r.created_by || "",
+        created_by_email: r.created_by_email || "",
       };
-    }));
+    });
+    // Filter: master admins see all, regular users see only their own
+    setOpps(isMaster ? allOpps : allOpps.filter((o) => o.created_by === user.uid));
     setLoading(false);
   }
 
@@ -275,13 +313,23 @@ export default function AdminPage() {
     try {
       const db = getFirestore(app);
       const data = { ...form };
-      delete data.id;
+      delete data.id; delete data._locationQuery; delete data._locationResults;
+      delete data.created_by; delete data.created_by_email;
       // Build combined location string
       if (data.city && data.state) data.location = `${data.city}, ${data.state}`;
-      if (editId) await updateDoc(doc(db, "opportunities", editId), data);
-      else await addDoc(collection(db, "opportunities"), data);
+
+      
+      if (editId) {
+        await updateDoc(doc(db, "opportunities", editId), data);
+      } else {
+        data.created_by = user.uid;
+        data.created_by_email = user.email || "";
+        await addDoc(collection(db, "opportunities"), data);
+      }
       setShowForm(false); setEditId(null); setForm({ ...EMPTY });
       await fetchOpps();
+
+        
     } catch (err) {
       console.error("Save error:", err);
       alert("Failed to save. Image may be too large — try removing it.");
@@ -304,6 +352,22 @@ export default function AdminPage() {
 
   if (authLoading || !user) return <div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
+  // Pending organizer screen
+  if (userRole === "organizer" && roleStatus === "pending") {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Account Pending Approval</h2>
+          <p className="text-sm text-muted-foreground mb-4">Your organizer account is waiting for admin approval. You&apos;ll be able to access the Admin Portal once approved.</p>
+          <p className="text-xs text-muted-foreground">In the meantime, you can browse opportunities on the <a href="/opportunities" className="text-primary font-semibold hover:underline">YouConnect Platform</a>.</p>
+        </div>
+      </div>
+    );
+  }
+
   const filtered = opps.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()) || o.organization.toLowerCase().includes(search.toLowerCase()));
   const inputClass = "w-full px-3 py-2.5 border border-border rounded-lg text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-[system-ui]";
   const selectClass = "w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-white font-[system-ui] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -314,7 +378,10 @@ export default function AdminPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Admin Portal</h1>
-          <p className="text-sm text-muted-foreground">Managing as <span className="font-semibold text-primary">{user.displayName || user.email}</span></p>
+          <p className="text-sm text-muted-foreground">
+            Managing as <span className="font-semibold text-primary">{user.displayName || user.email}</span>
+            {isMaster && <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 uppercase">Master Admin</span>}
+          </p>
         </div>
         <button onClick={openCreate} className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-lg text-sm cursor-pointer hover:bg-primary/90 transition">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" d="M12 5v14m-7-7h14" /></svg>
@@ -332,13 +399,60 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* Analytics Button */}
-      <div className="mb-6">
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-3 mb-6">
         <button onClick={() => { setShowAnalytics(true); fetchAnalytics(); }} className="inline-flex items-center gap-2 bg-white border border-primary text-primary font-semibold px-5 py-2.5 rounded-lg text-sm cursor-pointer hover:bg-primary hover:text-white transition">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
           See Analytics
         </button>
+        {isMaster && (
+          <button onClick={() => { setShowManageUsers(true); fetchPendingUsers(); }} className="inline-flex items-center gap-2 bg-white border border-amber-500 text-amber-700 font-semibold px-5 py-2.5 rounded-lg text-sm cursor-pointer hover:bg-amber-500 hover:text-white transition">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            Manage Users {pendingUsers.length > 0 && <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingUsers.length}</span>}
+          </button>
+        )}
       </div>
+
+      {/* Manage Users Modal (master admin only) */}
+      {showManageUsers && isMaster && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowManageUsers(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between bg-muted/30">
+              <h2 className="text-lg font-bold text-foreground">Manage Users</h2>
+              <button onClick={() => setShowManageUsers(false)} className="w-8 h-8 rounded-full bg-muted hover:bg-muted-foreground/10 flex items-center justify-center text-foreground cursor-pointer">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(80vh-60px)] p-6">
+              {pendingUsers.length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <p className="text-sm text-muted-foreground">No pending organizer requests.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground mb-4">{pendingUsers.length} pending organizer request{pendingUsers.length !== 1 ? "s" : ""}</p>
+                  {pendingUsers.map((u) => (
+                    <div key={u.uid} className="bg-muted/30 rounded-xl p-4 border border-border/40">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">{u.name || "No name"}</p>
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Requested: {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => approveUser(u.uid)} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer transition">Approve</button>
+                          <button onClick={() => denyUser(u.uid)} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 cursor-pointer transition">Deny</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Analytics Modal */}
       {showAnalytics && (
@@ -605,45 +719,55 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Row 5: Location autocomplete (only if In-Person or Hybrid) */}
+            {/* Row 5: Location autocomplete via Geoapify (only if In-Person or Hybrid) */}
             {form.location_mode !== "Remote" && (
               <div className="lg:col-span-4 relative">
                 <label className={labelClass}>Location *</label>
                 <input
-                  value={form._locationQuery !== undefined ? form._locationQuery : (form.city && form.state ? `${form.city}, ${form.state} ${form.zip || ""}`.trim() : "")}
-                  onChange={async (e) => {
+                  value={form._locationQuery !== undefined ? form._locationQuery : (form.city && form.state ? `${form.city}, ${form.state}` : "")}
+                  onChange={(e) => {
                     const q = e.target.value;
                     up("_locationQuery", q);
-                    up("city", ""); up("state", ""); up("zip", ""); up("location", "");
+                    if (q !== form._locationQuery) { up("city", ""); up("state", ""); up("zip", ""); up("location", ""); }
+                    clearTimeout(window._locTimeout);
                     if (q.length < 2) { up("_locationResults", []); return; }
-                    try {
-                      // Run two parallel searches for better coverage of small towns
-                      const [res1, res2] = await Promise.all([
-                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=us&limit=10&addressdetails=1&featuretype=city`),
-                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + " city USA")}&countrycodes=us&limit=10&addressdetails=1`),
-                      ]);
-                      const [data1, data2] = await Promise.all([res1.json(), res2.json()]);
-                      const all = [...data1, ...data2];
-                      const seen = new Set();
-                      const results = [];
-                      for (const r of all) {
-                        const a = r.address || {};
-                        const city = a.city || a.town || a.village || a.hamlet || a.municipality || a.suburb || "";
-                        const stateCode = a["ISO3166-2-lvl4"]?.split("-")[1] || "";
-                        const zip = (a.postcode || "").split("-")[0].split(";")[0].trim();
-                        if (!city || !stateCode) continue;
-                        const key = `${city.toLowerCase()}-${stateCode}`;
-                        if (seen.has(key)) continue;
-                        seen.add(key);
-                        results.push({ display: `${city}, ${stateCode}${zip ? " " + zip : ""}`, city, state: stateCode, zip });
-                        if (results.length >= 8) break;
+                    window._locTimeout = setTimeout(async () => {
+                      try {
+                        const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_KEY;
+                        if (!apiKey) { console.error("Missing NEXT_PUBLIC_GEOAPIFY_KEY in .env.local"); up("_locationResults", []); return; }
+                        const res = await fetch(
+                          `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&type=city&filter=countrycode:us&format=json&limit=8&apiKey=${apiKey}`
+                        );
+                        if (!res.ok) throw new Error("Geoapify API error");
+                        const json = await res.json();
+                        const seen = new Set();
+                        const results = [];
+                        for (const r of (json.results || [])) {
+                          const city = r.city || r.town || r.name || "";
+                          const stateCode = (r.state_code || "").replace("US-", "");
+                          const zip = (r.postcode || "").split(";")[0].trim();
+                          if (!city || !stateCode) continue;
+                          const key = `${city.toLowerCase()}-${stateCode}`;
+                          if (seen.has(key)) continue;
+                          seen.add(key);
+                          results.push({ display: `${city}, ${stateCode}`, city, state: stateCode, zip });
+                        }
+                        up("_locationResults", results);
+                      } catch (err) {
+                        console.error("Location search error:", err);
+                        up("_locationResults", []);
                       }
-                      up("_locationResults", results);
-                    } catch { up("_locationResults", []); }
+                    }, 300);
                   }}
-                  placeholder="Start typing a city name..."
+                  placeholder="Type a city (e.g. Chicago, Detroit, Novi...)"
                   className={inputClass}
                 />
+                {form.city && form.state && (
+                  <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    Selected: {form.city}, {form.state}
+                  </p>
+                )}
                 {form._locationResults?.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border/60 rounded-xl shadow-lg z-40 overflow-hidden max-h-64 overflow-y-auto">
                     {form._locationResults.map((r, i) => (
@@ -763,6 +887,7 @@ export default function AdminPage() {
                 <th className="px-3 py-3 text-left text-sm font-bold">Location</th>
                 <th className="px-3 py-3 text-left text-sm font-bold">Tags</th>
                 <th className="px-3 py-3 text-left text-sm font-bold whitespace-nowrap">Date / Time</th>
+                {isMaster && <th className="px-3 py-3 text-left text-sm font-bold whitespace-nowrap">Created By</th>}
                 <th className="px-3 py-3 text-center text-sm font-bold">Actions</th>
               </tr></thead>
               <tbody>
@@ -778,6 +903,7 @@ export default function AdminPage() {
                     </td>
                     <td className="px-3 py-3"><div className="flex flex-wrap gap-1">{o.tags?.slice(0, 3).map((tag) => <span key={tag} className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap ${TAG_COLORS[tag] || "bg-secondary text-secondary-foreground"}`}>{tag}</span>)}</div></td>
                     <td className="px-3 py-3 text-sm text-foreground whitespace-nowrap">{o.date}{o.time && ` ${o.time}`}</td>
+                    {isMaster && <td className="px-3 py-3 text-xs text-muted-foreground truncate max-w-[140px]" title={o.created_by_email}>{o.created_by_email || "—"}</td>}
                     <td className="px-3 py-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button onClick={() => openEdit(o)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-primary/20 text-primary hover:bg-accent cursor-pointer transition">Edit</button>
@@ -787,7 +913,7 @@ export default function AdminPage() {
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">No opportunities found.</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={isMaster ? 8 : 7} className="px-4 py-12 text-center text-muted-foreground">No opportunities found.</td></tr>}
               </tbody>
             </table>
           </div>
