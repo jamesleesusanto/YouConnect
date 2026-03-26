@@ -56,7 +56,7 @@ export default function PlatformPage() {
     try { return JSON.parse(localStorage.getItem("youconnect_geocache") || "{}"); } catch { return {}; }
   });
   const [geoLoading, setGeoLoading] = useState(false);
-  const perPage = 15;
+  const [perPage, setPerPage] = useState(25);
 
   // Haversine distance in miles
   function haversine(lat1, lon1, lat2, lon2) {
@@ -474,13 +474,29 @@ export default function PlatformPage() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-4 py-2 text-sm font-medium rounded-lg border border-border/60 bg-white hover:bg-muted disabled:opacity-50 cursor-pointer">Previous</button>
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-4 py-2 text-sm font-medium rounded-lg border border-border/60 bg-white hover:bg-muted disabled:opacity-50 cursor-pointer">Next</button>
+      <div className="flex items-center justify-between mt-6 flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <div className="flex rounded-lg border border-border/60 overflow-hidden">
+            {[25, 50, 100].map((n) => (
+              <button key={n} onClick={() => { setPerPage(n); setPage(1); }}
+                className={`px-3 py-1.5 text-sm font-medium cursor-pointer transition ${perPage === n ? "bg-primary text-white" : "bg-white text-foreground hover:bg-muted"} ${n !== 25 ? "border-l border-border/60" : ""}`}>
+                {n}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{filtered.length > 0 ? `${(page - 1) * perPage + 1}–${Math.min(page * perPage, filtered.length)} of ${filtered.length}` : "0 results"}</span>
+          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="w-9 h-9 flex items-center justify-center rounded-lg border border-border/60 bg-white hover:bg-muted disabled:opacity-30 cursor-pointer transition">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="w-9 h-9 flex items-center justify-center rounded-lg border border-border/60 bg-white hover:bg-muted disabled:opacity-30 cursor-pointer transition">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+      </div>
 
       {/* Enlarge image overlay */}
       {enlargeImg && modalOpp?.image_url && (
