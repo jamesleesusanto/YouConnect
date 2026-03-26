@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import app from "../../../lib/firebase";
 import { getFirestore, collection, getDocs, addDoc } from "firebase/firestore";
 import { format } from "date-fns";
@@ -51,10 +51,15 @@ export default function PlatformPage() {
   const [zipInput, setZipInput] = useState("");
   const [zipModalOpen, setZipModalOpen] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
-  const [geoCache, setGeoCache] = useState(() => {
+  const [geoCacheVersion, setGeoCacheVersion] = useState(0); // trigger re-renders
+  const geoCacheRef = useRef(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem("youconnect_geocache") || "{}"); } catch { return {}; }
   });
+  // Initialize ref on mount
+  if (typeof window !== "undefined" && Object.keys(geoCacheRef.current).length === 0) {
+    try { geoCacheRef.current = JSON.parse(localStorage.getItem("youconnect_geocache") || "{}"); } catch {}
+  }
   const [geoLoading, setGeoLoading] = useState(false);
   const [perPage, setPerPage] = useState(25);
 
@@ -70,37 +75,40 @@ export default function PlatformPage() {
   async function geocode(location) {
     if (!location) return null;
     const key = location.trim().toLowerCase();
-    if (geoCache[key]) return geoCache[key];
+    if (geoCacheRef.current[key]) return geoCacheRef.current[key];
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1&countrycodes=us`);
+      // Use city/state format for better results
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ", USA")}&limit=1`, {
+        headers: { "User-Agent": "YouConnect/1.0" }
+      });
       const data = await res.json();
       if (data && data[0]) {
         const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        const newCache = { ...geoCache, [key]: coords };
-        setGeoCache(newCache);
-        localStorage.setItem("youconnect_geocache", JSON.stringify(newCache));
+        geoCacheRef.current[key] = coords;
+        try { localStorage.setItem("youconnect_geocache", JSON.stringify(geoCacheRef.current)); } catch {}
         return coords;
       }
-    } catch (e) { /* silent */ }
+    } catch (e) { console.error("Geocode error for:", location, e); }
     return null;
   }
 
   async function enableLocationSort() {
     if (!zipInput) return;
     setGeoLoading(true);
+    // Geocode user's zip code
     const coords = await geocode(zipInput);
     if (!coords) { alert("Could not find that zip code. Please try again."); setGeoLoading(false); return; }
     setUserCoords(coords);
-    // Geocode all opportunity zip codes (much more accurate than city names)
+    // Geocode each opportunity's location (use "City, State" format)
     for (const opp of opportunities) {
       if (opp.location_mode === "Remote") continue;
-      const zipKey = opp.zip || "";
-      const locKey = zipKey || opp.location;
-      if (locKey && !geoCache[locKey.trim().toLowerCase()]) {
+      const locKey = opp.location || "";
+      if (locKey && !geoCacheRef.current[locKey.trim().toLowerCase()]) {
         await geocode(locKey);
-        await new Promise((r) => setTimeout(r, 1100));
+        await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
       }
     }
+    setGeoCacheVersion((v) => v + 1); // trigger re-render with updated cache
     setLocationSort(true);
     setZipModalOpen(false);
     setGeoLoading(false);
@@ -183,14 +191,14 @@ export default function PlatformPage() {
     if (locationSort && userCoords) {
       result = result.map((o) => {
         if (o.location_mode === "Remote") return { ...o, _dist: 99999 };
-        const locKey = (o.zip || o.location || "").trim().toLowerCase();
-        const coords = locKey ? geoCache[locKey] : null;
+        const locKey = (o.location || "").trim().toLowerCase();
+        const coords = locKey ? geoCacheRef.current[locKey] : null;
         const dist = coords ? haversine(userCoords.lat, userCoords.lng, coords.lat, coords.lng) : 99998;
         return { ...o, _dist: dist };
       }).sort((a, b) => a._dist - b._dist);
     }
     return result;
-  }, [opportunities, filters, favorites, showFavorites, locationSort, userCoords, geoCache]);
+  }, [opportunities, filters, favorites, showFavorites, locationSort, userCoords, geoCacheVersion]);
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -271,7 +279,7 @@ export default function PlatformPage() {
       <div className="space-y-4">
         <div className="relative">
           <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input placeholder="Search by name, location, industry, or organization..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} className="w-full pl-12 pr-4 h-12 text-base bg-white border border-border/60 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-[system-ui]" />
+          <input placeholder="Search by name, location, tags, or organization..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} className="w-full pl-12 pr-4 h-12 text-base bg-white border border-border/60 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-[system-ui]" />
         </div>
 
         <div className="flex flex-wrap items-start gap-3">
@@ -450,8 +458,25 @@ export default function PlatformPage() {
                     </td>
                     <td className="px-3 py-3 text-foreground text-sm break-words">{opp.organization}</td>
                     <td className="px-3 py-3 text-foreground text-sm break-words">{renderLocation(opp)}</td>
-                    <td className="px-3 py-3 text-sm text-foreground whitespace-nowrap">
-                      {opp.date && (() => { try { return format(new Date(opp.date), "MMM d, yyyy"); } catch { return opp.date; } })()}
+                    <td className="px-3 py-3 text-sm text-foreground">
+                      <div className="whitespace-nowrap">{opp.date && (() => { try { return format(new Date(opp.date), "MMM d, yyyy"); } catch { return opp.date; } })()}</div>
+                      {(() => {
+                        const today = new Date().toISOString().split("T")[0];
+                        const future = (opp.recurring_dates || []).filter((d) => d >= today).slice(0, 5);
+                        if (future.length === 0) return null;
+                        return (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {future.map((d) => (
+                              <span key={d} className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary whitespace-nowrap">
+                                {(() => { try { return format(new Date(d), "MMM d"); } catch { return d; } })()}
+                              </span>
+                            ))}
+                            {(opp.recurring_dates || []).filter((d) => d >= today).length > 5 && (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium text-muted-foreground">+{(opp.recurring_dates || []).filter((d) => d >= today).length - 5}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-nowrap gap-1">

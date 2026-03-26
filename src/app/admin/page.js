@@ -84,6 +84,7 @@ function RecurringDatesPicker({ dates, onChange }) {
 
   function toggleDate(dateStr) {
     if (dates.includes(dateStr)) onChange(dates.filter((d) => d !== dateStr));
+    else if (dates.length >= 10) return; // Cap at 10
     else onChange([...dates, dateStr].sort());
   }
 
@@ -97,27 +98,27 @@ function RecurringDatesPicker({ dates, onChange }) {
   return (
     <div>
       <button type="button" onClick={() => setPickerOpen(!pickerOpen)}
-        className="w-full px-3 py-2.5 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer flex items-center justify-center gap-2">
+        className={`w-full px-3 py-2.5 rounded-lg border text-sm transition cursor-pointer flex items-center justify-center gap-2 ${dates.length > 0 ? "border-primary bg-primary/5 text-primary font-medium" : "border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-        {dates.length > 0 ? `${dates.length} recurring date${dates.length > 1 ? "s" : ""} selected` : "Select recurring dates"}
+        {dates.length > 0 ? `${dates.length}/10 recurring date${dates.length > 1 ? "s" : ""} selected` : "Select recurring dates (max 10)"}
       </button>
 
       {pickerOpen && (
-        <div className="mt-2 bg-white border border-border rounded-xl p-4 shadow-lg">
+        <div className="mt-2 bg-white border border-primary/20 rounded-2xl p-5 shadow-xl">
           {/* Month nav */}
-          <div className="flex items-center justify-between mb-3">
-            <button type="button" onClick={prevMonth} className="p-1 rounded hover:bg-muted cursor-pointer">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          <div className="flex items-center justify-between mb-4">
+            <button type="button" onClick={prevMonth} className="w-8 h-8 rounded-lg hover:bg-primary/10 cursor-pointer flex items-center justify-center transition">
+              <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
-            <button type="button" onClick={nextMonth} className="p-1 rounded hover:bg-muted cursor-pointer">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            <span className="text-sm font-bold text-foreground">{monthLabel}</span>
+            <button type="button" onClick={nextMonth} className="w-8 h-8 rounded-lg hover:bg-primary/10 cursor-pointer flex items-center justify-center transition">
+              <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-              <div key={d} className="text-xs font-medium text-muted-foreground py-1">{d}</div>
+              <div key={d} className="text-[11px] font-bold text-primary uppercase py-1">{d}</div>
             ))}
           </div>
           {/* Days */}
@@ -126,31 +127,35 @@ function RecurringDatesPicker({ dates, onChange }) {
               if (day === null) return <div key={`empty-${i}`} />;
               const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const isSelected = dates.includes(dateStr);
+              const atMax = dates.length >= 10 && !isSelected;
               return (
-                <button key={dateStr} type="button" onClick={() => toggleDate(dateStr)}
-                  className={`w-8 h-8 rounded-lg text-xs font-medium transition cursor-pointer mx-auto flex items-center justify-center ${
-                    isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
+                <button key={dateStr} type="button" onClick={() => toggleDate(dateStr)} disabled={atMax}
+                  className={`w-9 h-9 rounded-xl text-xs font-semibold transition mx-auto flex items-center justify-center ${
+                    isSelected ? "bg-primary text-white shadow-sm cursor-pointer" : atMax ? "text-muted-foreground/30 cursor-not-allowed" : "hover:bg-primary/10 text-foreground cursor-pointer"
                   }`}>
                   {day}
                 </button>
               );
             })}
           </div>
+          {dates.length >= 10 && (
+            <p className="text-xs text-amber-600 mt-2 text-center font-medium">Maximum of 10 recurring dates reached</p>
+          )}
           {dates.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border">
+            <div className="mt-4 pt-3 border-t border-primary/10">
               <div className="flex flex-wrap gap-1.5">
                 {dates.map((d) => (
-                  <span key={d} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-accent text-accent-foreground border border-primary/10">
+                  <span key={d} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
                     {(() => { try { return format(new Date(d), "MMM d"); } catch { return d; } })()}
-                    <button type="button" onClick={() => toggleDate(d)} className="text-muted-foreground hover:text-destructive cursor-pointer">&times;</button>
+                    <button type="button" onClick={() => toggleDate(d)} className="text-primary/50 hover:text-destructive cursor-pointer ml-0.5">&times;</button>
                   </span>
                 ))}
               </div>
             </div>
           )}
-          <div className="mt-3 flex justify-end">
+          <div className="mt-4 flex justify-end">
             <button type="button" onClick={() => setPickerOpen(false)}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold cursor-pointer hover:bg-primary/90 transition">
+              className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold cursor-pointer hover:bg-primary/90 transition shadow-sm">
               Done
             </button>
           </div>
@@ -269,7 +274,17 @@ export default function AdminPage() {
   }
 
   function openCreate() { setEditId(null); setForm({ ...EMPTY }); setShowForm(true); }
-  function openEdit(o) { setEditId(o.id); setForm({ ...o }); setShowForm(true); }
+  function openEdit(o) {
+    const f = { ...o };
+    if (f.time) {
+      const [hStr, mStr] = f.time.split(":");
+      const h24 = parseInt(hStr);
+      f._timeHour = String(h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24);
+      f._timeMin = mStr || "00";
+      f._timeAP = h24 >= 12 ? "PM" : "AM";
+    }
+    setEditId(o.id); setForm(f); setShowForm(true);
+  }
   function up(f, v) { setForm((p) => ({ ...p, [f]: v })); }
   function toggleTag(tag) {
     setForm((prev) => {
@@ -315,10 +330,10 @@ export default function AdminPage() {
       const data = { ...form };
       delete data.id; delete data._locationQuery; delete data._locationResults;
       delete data.created_by; delete data.created_by_email;
+      delete data._datePickerOpen; delete data._dateViewMonth;
+      delete data._timeHour; delete data._timeMin; delete data._timeAP; delete data._timePickerOpen;
       // Build combined location string
       if (data.city && data.state) data.location = `${data.city}, ${data.state}`;
-
-      
       if (editId) {
         await updateDoc(doc(db, "opportunities", editId), data);
       } else {
@@ -328,8 +343,6 @@ export default function AdminPage() {
       }
       setShowForm(false); setEditId(null); setForm({ ...EMPTY });
       await fetchOpps();
-
-        
     } catch (err) {
       console.error("Save error:", err);
       alert("Failed to save. Image may be too large — try removing it.");
@@ -675,13 +688,13 @@ export default function AdminPage() {
             {/* Row 1: Name (full width) */}
             <div className="lg:col-span-4">
               <label className={labelClass}>Name * <span className="text-muted-foreground font-normal normal-case">({form.name.length}/40)</span></label>
-              <input value={form.name} onChange={(e) => { if (e.target.value.length <= 40) up("name", e.target.value); }} placeholder="e.g. Summer Volunteer Program" maxLength={40} className={inputClass} />
+              <input value={form.name} onChange={(e) => { const v = e.target.value.replace(/\b\w/g, (c) => c.toUpperCase()); if (v.length <= 40) up("name", v); }} placeholder="e.g. Summer Volunteer Program" maxLength={40} className={inputClass} />
             </div>
 
             {/* Row 2: Organization, Type */}
             <div className="lg:col-span-2">
               <label className={labelClass}>Organization * <span className="text-muted-foreground font-normal normal-case">({form.organization.length}/30)</span></label>
-              <input value={form.organization} onChange={(e) => { if (e.target.value.length <= 30) up("organization", e.target.value); }} maxLength={30} className={inputClass} />
+              <input value={form.organization} onChange={(e) => { const v = e.target.value.replace(/\b\w/g, (c) => c.toUpperCase()); if (v.length <= 30) up("organization", v); }} maxLength={30} className={inputClass} />
             </div>
             <div className="lg:col-span-2"><label className={labelClass}>Type *</label><select value={form.opportunity_type} onChange={(e) => up("opportunity_type", e.target.value)} className={selectClass}><option value="">Select type</option>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
 
@@ -759,7 +772,7 @@ export default function AdminPage() {
                       }
                     }, 300);
                   }}
-                  placeholder="Type a city (e.g. Chicago, Detroit, Novi...)"
+                  placeholder="Type a City or Zip Code"
                   className={inputClass}
                 />
                 {form.city && form.state && (
@@ -805,9 +818,118 @@ export default function AdminPage() {
               {form.tags.length > 0 && <p className="text-xs text-muted-foreground mt-1.5">{form.tags.length}/3 selected: {form.tags.join(", ")}</p>}
             </div>
 
-            {/* Row 6: Date, Time *, Timezone */}
-            <div><label className={labelClass}>Date *</label><input type="date" value={form.date} onChange={(e) => up("date", e.target.value)} className={inputClass} /></div>
-            <div><label className={labelClass}>Time *</label><input type="time" value={form.time} onChange={(e) => up("time", e.target.value)} className={inputClass} required /></div>
+            {/* Row 6: Date *, Time *, Timezone */}
+            <div className="lg:col-span-2 relative">
+              <label className={labelClass}>Date *</label>
+              <button type="button" onClick={() => up("_datePickerOpen", !form._datePickerOpen)}
+                className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition cursor-pointer flex items-center justify-between ${form.date ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                <span>{form.date ? (() => { try { return format(new Date(form.date), "MMMM d, yyyy"); } catch { return form.date; } })() : "Select date"}</span>
+                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </button>
+              {form._datePickerOpen && (() => {
+                const dv = form._dateViewMonth || (form.date ? new Date(form.date) : new Date());
+                const dy = dv.getFullYear(), dm = dv.getMonth();
+                const dFirst = new Date(dy, dm, 1).getDay();
+                const dDays = new Date(dy, dm + 1, 0).getDate();
+                const dCells = [];
+                for (let i = 0; i < dFirst; i++) dCells.push(null);
+                for (let d = 1; d <= dDays; d++) dCells.push(d);
+                return (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-primary/20 rounded-2xl p-5 shadow-xl z-40 w-[300px]">
+                    <div className="flex items-center justify-between mb-4">
+                      <button type="button" onClick={() => up("_dateViewMonth", new Date(dy, dm - 1, 1))} className="w-8 h-8 rounded-lg hover:bg-primary/10 cursor-pointer flex items-center justify-center transition">
+                        <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                      </button>
+                      <span className="text-sm font-bold text-foreground">{format(dv, "MMMM yyyy")}</span>
+                      <button type="button" onClick={() => up("_dateViewMonth", new Date(dy, dm + 1, 1))} className="w-8 h-8 rounded-lg hover:bg-primary/10 cursor-pointer flex items-center justify-center transition">
+                        <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                      {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map((d) => (
+                        <div key={d} className="text-[11px] font-bold text-primary py-1">{d}</div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {dCells.map((day, i) => {
+                        if (day === null) return <div key={`de-${i}`} />;
+                        const ds = `${dy}-${String(dm + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const isSel = form.date === ds;
+                        return (
+                          <button key={ds} type="button" onClick={() => { up("date", ds); up("_datePickerOpen", false); }}
+                            className={`w-9 h-9 rounded-xl text-xs font-semibold transition cursor-pointer mx-auto flex items-center justify-center ${isSel ? "bg-primary text-white shadow-sm" : "hover:bg-primary/10 text-foreground"}`}>
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="lg:col-span-2 relative">
+              <label className={labelClass}>Time *</label>
+              <button type="button" onClick={() => up("_timePickerOpen", !form._timePickerOpen)}
+                className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition cursor-pointer flex items-center justify-between ${form.time ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                <span>{form.time ? (() => { const [h,m] = form.time.split(":"); const h24=parseInt(h); const h12=h24===0?12:h24>12?h24-12:h24; return `${h12}:${m} ${h24>=12?"PM":"AM"}`; })() : "Select time"}</span>
+                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </button>
+              {form._timePickerOpen && (
+                <div className="absolute top-full left-0 mt-2 bg-white border border-primary/20 rounded-2xl p-5 shadow-xl z-40 w-[280px]">
+                  <div className="text-sm font-bold text-foreground text-center mb-3">Select Time</div>
+                  <div className="flex gap-0 border border-primary/20 rounded-xl overflow-hidden" style={{height:200}}>
+                    {/* Hour column */}
+                    <div className="flex-1 overflow-y-auto border-r border-primary/10">
+                      <div className="sticky top-0 bg-white text-[11px] font-bold text-primary text-center py-1.5 border-b border-primary/10">HOUR</div>
+                      {[12,1,2,3,4,5,6,7,8,9,10,11].map((h) => {
+                        const sel = form._timeHour === String(h);
+                        return <button key={h} type="button" onClick={() => {
+                          up("_timeHour", String(h));
+                          const m = form._timeMin || "00";
+                          const ap = form._timeAP || "AM";
+                          let h24 = h; if(ap==="PM"&&h!==12)h24+=12; if(ap==="AM"&&h===12)h24=0;
+                          up("time", `${String(h24).padStart(2,"0")}:${m}`);
+                        }} className={`w-full py-2 text-sm font-semibold cursor-pointer transition ${sel ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground"}`}>{h}</button>;
+                      })}
+                    </div>
+                    {/* Minute column */}
+                    <div className="flex-1 overflow-y-auto border-r border-primary/10">
+                      <div className="sticky top-0 bg-white text-[11px] font-bold text-primary text-center py-1.5 border-b border-primary/10">MIN</div>
+                      {["00","15","30","45"].map((m) => {
+                        const sel = (form._timeMin || "00") === m;
+                        return <button key={m} type="button" onClick={() => {
+                          up("_timeMin", m);
+                          const h = parseInt(form._timeHour || "12");
+                          const ap = form._timeAP || "AM";
+                          let h24 = h; if(ap==="PM"&&h!==12)h24+=12; if(ap==="AM"&&h===12)h24=0;
+                          up("time", `${String(h24).padStart(2,"0")}:${m}`);
+                        }} className={`w-full py-2 text-sm font-semibold cursor-pointer transition ${sel ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground"}`}>{m}</button>;
+                      })}
+                    </div>
+                    {/* AM/PM column */}
+                    <div className="flex-1 overflow-y-auto">
+                      <div className="sticky top-0 bg-white text-[11px] font-bold text-primary text-center py-1.5 border-b border-primary/10">AM/PM</div>
+                      {["AM","PM"].map((ap) => {
+                        const sel = (form._timeAP || "") === ap;
+                        return <button key={ap} type="button" onClick={() => {
+                          up("_timeAP", ap);
+                          const h = parseInt(form._timeHour || "12");
+                          const m = form._timeMin || "00";
+                          let h24 = h; if(ap==="PM"&&h!==12)h24+=12; if(ap==="AM"&&h===12)h24=0;
+                          up("time", `${String(h24).padStart(2,"0")}:${m}`);
+                        }} className={`w-full py-2 text-sm font-semibold cursor-pointer transition ${sel ? "bg-primary text-white" : "hover:bg-primary/10 text-foreground"}`}>{ap}</button>;
+                      })}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button type="button" onClick={() => up("_timePickerOpen", false)}
+                      className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold cursor-pointer hover:bg-primary/90 transition shadow-sm">
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="lg:col-span-4">
               <label className={labelClass}>Timezone *</label>
               <select value={form.timezone} onChange={(e) => up("timezone", e.target.value)} className={selectClass}>

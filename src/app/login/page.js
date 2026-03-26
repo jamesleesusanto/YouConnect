@@ -52,7 +52,17 @@ export default function LoginPage() {
         await signup(email, password, name, selectedRole);
         setVerificationSent(true);
       } else {
-        await login(email, password, rememberMe);
+        const cred = await login(email, password, rememberMe);
+        // Check email verification
+        if (!cred.user.emailVerified) {
+          const { getAuth, sendEmailVerification, signOut } = await import("firebase/auth");
+          const auth = getAuth();
+          await sendEmailVerification(cred.user);
+          await signOut(auth);
+          setError("Please verify your email before signing in. We've sent a new verification link to " + email);
+          setLoading(false);
+          return;
+        }
       }
     } catch (err) {
       const code = err?.code || "";
@@ -145,7 +155,7 @@ export default function LoginPage() {
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div>
                   <label className={labelClass}>Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email"
                     className="w-full px-4 py-3 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
                 </div>
                 <button type="submit" disabled={loading}
@@ -195,13 +205,13 @@ export default function LoginPage() {
             {isSignUp && (
               <div>
                 <label className={labelClass}>Full Name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe"
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" autoComplete="name"
                   className="w-full px-4 py-3 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </div>
             )}
             <div>
               <label className={labelClass}>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email"
                 className="w-full px-4 py-3 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </div>
 
