@@ -33,6 +33,11 @@ const INDUSTRIES = ["Healthcare", "Activism", "Business", "Humanities", "Educati
 const AGE_GROUPS = ["Youth", "High School", "College"];
 const TYPES = ["Internship", "Workshop", "Event", "Volunteering"];
 
+function titleCase(str) {
+  if (!str) return str;
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function PlatformPage() {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +122,7 @@ export default function PlatformPage() {
   function openModal(opp) {
     setModalOpp(opp);
     setEnlargeImg(false);
-    trackClick(opp.id, "more_info");
+    trackClick(opp._parentId || opp.id, "more_info");
     if (opp.image_url) {
       const img = new window.Image();
       img.onload = () => setImgOrientation(img.width >= img.height ? "landscape" : "portrait");
@@ -155,7 +160,19 @@ export default function PlatformPage() {
           timezone: raw.timezone || "",
         };
       });
-      setOpportunities(data);
+      // Expand recurring dates: each recurring date becomes its own row
+      const expanded = [];
+      for (const opp of data) {
+        if (opp.recurring_dates && opp.recurring_dates.length > 0) {
+          // Create one row per recurring date (ignore the main date field for these)
+          for (const rd of opp.recurring_dates) {
+            expanded.push({ ...opp, id: `${opp.id}_rd_${rd}`, _parentId: opp.id, date: rd, recurring_dates: [] });
+          }
+        } else {
+          expanded.push(opp);
+        }
+      }
+      setOpportunities(expanded);
       setLoading(false);
     }
     fetchData();
@@ -389,7 +406,7 @@ export default function PlatformPage() {
           else { setZipModalOpen(true); }
         }} className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border cursor-pointer transition ${locationSort ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-          {locationSort ? `Sorted by distance from ${zipInput}` : "Sort by Distance"}
+          {locationSort ? `Sorted by Distance from ${zipInput}` : "Sort by Distance"}
         </button>
 
         <button onClick={() => setShowFavorites(!showFavorites)} className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border cursor-pointer transition ${showFavorites ? "bg-primary text-white border-primary" : "bg-white text-foreground border-border/60 hover:bg-muted"}`}>
@@ -452,31 +469,14 @@ export default function PlatformPage() {
                         </svg>
                       </button>
                     </td>
-                    <td className="px-3 py-3 font-bold text-foreground text-sm break-words">{opp.name}</td>
+                    <td className="px-3 py-3 font-bold text-foreground text-sm break-words">{titleCase(opp.name)}</td>
                     <td className="px-3 py-3">
                       <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap ${TYPE_STYLES[opp.opportunity_type] || "bg-gray-100 text-gray-700"}`}>{opp.opportunity_type}</span>
                     </td>
-                    <td className="px-3 py-3 text-foreground text-sm break-words">{opp.organization}</td>
+                    <td className="px-3 py-3 text-foreground text-sm break-words">{titleCase(opp.organization)}</td>
                     <td className="px-3 py-3 text-foreground text-sm break-words">{renderLocation(opp)}</td>
                     <td className="px-3 py-3 text-sm text-foreground">
                       <div className="whitespace-nowrap">{opp.date && (() => { try { return format(new Date(opp.date), "MMM d, yyyy"); } catch { return opp.date; } })()}</div>
-                      {(() => {
-                        const today = new Date().toISOString().split("T")[0];
-                        const future = (opp.recurring_dates || []).filter((d) => d >= today).slice(0, 5);
-                        if (future.length === 0) return null;
-                        return (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {future.map((d) => (
-                              <span key={d} className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary whitespace-nowrap">
-                                {(() => { try { return format(new Date(d), "MMM d"); } catch { return d; } })()}
-                              </span>
-                            ))}
-                            {(opp.recurring_dates || []).filter((d) => d >= today).length > 5 && (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium text-muted-foreground">+{(opp.recurring_dates || []).filter((d) => d >= today).length - 5}</span>
-                            )}
-                          </div>
-                        );
-                      })()}
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-nowrap gap-1">
@@ -545,17 +545,34 @@ export default function PlatformPage() {
               {/* Info */}
               <div className={`overflow-y-auto max-h-[85vh] p-8 sm:p-10 ${modalOpp.image_url ? "flex-1 min-w-0" : "w-full"}`}>
                 <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold mb-3 ${TYPE_STYLES[modalOpp.opportunity_type] || "bg-gray-100 text-gray-700"}`}>{modalOpp.opportunity_type}</span>
-                <h2 className="text-2xl sm:text-3xl font-bold text-foreground">{modalOpp.name}</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground">{titleCase(modalOpp.name)}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 mt-6">
-                  <div><p className="text-xs font-semibold text-primary uppercase tracking-wide">Organization</p><p className="text-sm text-foreground mt-0.5">{modalOpp.organization}</p></div>
-                  <div><p className="text-xs font-semibold text-primary uppercase tracking-wide">Age Group</p><p className="text-sm text-foreground mt-0.5">{Array.isArray(modalOpp.age_group) ? modalOpp.age_group.join(", ") : (modalOpp.age_group || "All Ages")}</p></div>
-                  <div><p className="text-xs font-semibold text-primary uppercase tracking-wide">Location</p><p className="text-sm text-foreground mt-0.5 flex items-center gap-1">{modalOpp.location_mode === "Remote" ? (<><svg className="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> Remote</>) : modalOpp.location_mode === "Hybrid" ? <>{modalOpp.location} or Online</> : modalOpp.location || "TBD"}</p></div>
-                  <div><p className="text-xs font-semibold text-primary uppercase tracking-wide">Industry</p><div className="flex flex-wrap gap-1 mt-1">{modalOpp.tags?.map((tag) => <span key={tag} className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${TAG_COLORS[tag] || "bg-secondary text-secondary-foreground"}`}>{tag}</span>)}{(!modalOpp.tags || modalOpp.tags.length === 0) && <span className="text-sm text-muted-foreground">—</span>}</div></div>
-                  {modalOpp.date && (<div><p className="text-xs font-semibold text-primary uppercase tracking-wide">Date & Time</p><p className="text-sm text-foreground mt-0.5">{(() => { try { return format(new Date(modalOpp.date), "MMMM d, yyyy"); } catch { return modalOpp.date; } })()}{modalOpp.time && ` at ${modalOpp.time}`}{modalOpp.timezone && ` ${modalOpp.timezone}`}</p></div>)}
-                  {modalOpp.contact_email && (<div><p className="text-xs font-semibold text-primary uppercase tracking-wide">Contact</p><p className="text-sm text-foreground mt-0.5">{modalOpp.contact_email}</p></div>)}
+                  <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Organization</p><p className="text-sm text-foreground mt-0.5">{titleCase(modalOpp.organization)}</p></div>
+                  <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Age Group</p><p className="text-sm text-foreground mt-0.5">{Array.isArray(modalOpp.age_group) ? modalOpp.age_group.join(", ") : (modalOpp.age_group || "All Ages")}</p></div>
+                  <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Location</p><p className="text-sm text-foreground mt-0.5 flex items-center gap-1">{modalOpp.location_mode === "Remote" ? (<><svg className="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> Remote</>) : modalOpp.location_mode === "Hybrid" ? <>{modalOpp.location} or Online</> : modalOpp.location || "TBD"}</p></div>
+                  <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Industry</p><div className="flex flex-wrap gap-1 mt-1">{modalOpp.tags?.map((tag) => <span key={tag} className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${TAG_COLORS[tag] || "bg-secondary text-secondary-foreground"}`}>{tag}</span>)}{(!modalOpp.tags || modalOpp.tags.length === 0) && <span className="text-sm text-muted-foreground">—</span>}</div></div>
+                  {modalOpp.date && (<div><p className="text-xs font-bold text-primary uppercase tracking-wide">Date & Time</p><p className="text-sm text-foreground mt-0.5">{(() => { try { return format(new Date(modalOpp.date), "MMMM d, yyyy"); } catch { return modalOpp.date; } })()}{modalOpp.time && (() => { const [h,m] = modalOpp.time.split(":"); const h24=parseInt(h); const h12=h24===0?12:h24>12?h24-12:h24; const ap=h24>=12?"PM":"AM"; return ` at ${h12}:${m} ${ap}`; })()}{modalOpp.timezone && ` ${modalOpp.timezone}`}</p></div>)}
+                  {modalOpp.contact_email && (<div><p className="text-xs font-bold text-primary uppercase tracking-wide">Contact</p><p className="text-sm text-foreground mt-0.5">{modalOpp.contact_email}</p></div>)}
                 </div>
-                {modalOpp.recurring_dates?.length > 0 && (<div className="mt-5"><p className="text-xs font-semibold text-primary uppercase tracking-wide">Recurring Dates</p><div className="flex flex-wrap gap-2 mt-1">{modalOpp.recurring_dates.map((d) => (<span key={d} className="inline-block px-2.5 py-1 rounded-lg text-xs font-medium bg-accent text-accent-foreground border border-primary/10">{(() => { try { return format(new Date(d), "MMM d, yyyy"); } catch { return d; } })()}</span>))}</div></div>)}
-                {modalOpp.description && (<div className="mt-5"><p className="text-xs font-semibold text-primary uppercase tracking-wide">Description</p><p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-line">{modalOpp.description}</p></div>)}
+                {/* Show future recurring dates for this opportunity */}
+                {modalOpp._parentId && (() => {
+                  const today = new Date().toISOString().split("T")[0];
+                  const siblings = filtered.filter((o) => (o._parentId || o.id) === modalOpp._parentId && o.date > modalOpp.date && o.date >= today);
+                  if (siblings.length === 0) return null;
+                  return (
+                    <div className="mt-5">
+                      <p className="text-xs font-bold text-primary uppercase tracking-wide">Upcoming Recurring Dates</p>
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {siblings.map((s) => (
+                          <span key={s.id} className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                            {(() => { try { return format(new Date(s.date), "MMM d, yyyy"); } catch { return s.date; } })()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {modalOpp.description && (<div className="mt-5"><p className="text-xs font-bold text-primary uppercase tracking-wide">Description</p><p className="text-sm text-foreground mt-1 leading-relaxed whitespace-pre-line">{modalOpp.description}</p></div>)}
                 {modalOpp.link && (<a href={modalOpp.link.startsWith("http") ? modalOpp.link : `https://${modalOpp.link}`} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(modalOpp.id, "learn_more")} className="inline-flex items-center gap-2 mt-6 bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-lg text-sm hover:bg-primary/90 transition">Learn More / Apply<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>)}
               </div>
               {/* Right side image panel — all images go here */}

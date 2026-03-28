@@ -39,8 +39,8 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden xl:flex items-center gap-1">
+          {/* Desktop Nav — right-aligned */}
+          <nav className="hidden xl:flex items-center gap-1 ml-auto mr-3">
             {allLinks.map((link) => (
               <Link
                 key={link.path}

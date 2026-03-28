@@ -84,7 +84,7 @@ function RecurringDatesPicker({ dates, onChange }) {
 
   function toggleDate(dateStr) {
     if (dates.includes(dateStr)) onChange(dates.filter((d) => d !== dateStr));
-    else if (dates.length >= 10) return; // Cap at 10
+    else if (dates.length >= 7) return; // Cap at 7
     else onChange([...dates, dateStr].sort());
   }
 
@@ -100,7 +100,7 @@ function RecurringDatesPicker({ dates, onChange }) {
       <button type="button" onClick={() => setPickerOpen(!pickerOpen)}
         className={`w-full px-3 py-2.5 rounded-lg border text-sm transition cursor-pointer flex items-center justify-center gap-2 ${dates.length > 0 ? "border-primary bg-primary/5 text-primary font-medium" : "border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-        {dates.length > 0 ? `${dates.length}/10 recurring date${dates.length > 1 ? "s" : ""} selected` : "Select recurring dates (max 10)"}
+        {dates.length > 0 ? `${dates.length}/7 recurring date${dates.length > 1 ? "s" : ""} selected` : "Select recurring dates (max 7)"}
       </button>
 
       {pickerOpen && (
@@ -127,7 +127,7 @@ function RecurringDatesPicker({ dates, onChange }) {
               if (day === null) return <div key={`empty-${i}`} />;
               const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const isSelected = dates.includes(dateStr);
-              const atMax = dates.length >= 10 && !isSelected;
+              const atMax = dates.length >= 7 && !isSelected;
               return (
                 <button key={dateStr} type="button" onClick={() => toggleDate(dateStr)} disabled={atMax}
                   className={`w-9 h-9 rounded-xl text-xs font-semibold transition mx-auto flex items-center justify-center ${
