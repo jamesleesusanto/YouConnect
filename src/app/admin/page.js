@@ -128,10 +128,14 @@ function RecurringDatesPicker({ dates, onChange }) {
               const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const isSelected = dates.includes(dateStr);
               const atMax = dates.length >= 7 && !isSelected;
+              const nowR = new Date();
+              const todayR = `${nowR.getFullYear()}-${String(nowR.getMonth()+1).padStart(2,"0")}-${String(nowR.getDate()).padStart(2,"0")}`;
+              const isPastR = dateStr < todayR;
+              const disabled = isPastR || atMax;
               return (
-                <button key={dateStr} type="button" onClick={() => toggleDate(dateStr)} disabled={atMax}
+                <button key={dateStr} type="button" onClick={() => { if (!disabled) toggleDate(dateStr); }} disabled={disabled}
                   className={`w-9 h-9 rounded-xl text-xs font-semibold transition mx-auto flex items-center justify-center ${
-                    isSelected ? "bg-primary text-white shadow-sm cursor-pointer" : atMax ? "text-muted-foreground/30 cursor-not-allowed" : "hover:bg-primary/10 text-foreground cursor-pointer"
+                    isSelected ? "bg-primary text-white shadow-sm cursor-pointer" : isPastR ? "text-red-300 line-through cursor-not-allowed" : atMax ? "text-muted-foreground/30 cursor-not-allowed" : "hover:bg-primary/10 text-foreground cursor-pointer"
                   }`}>
                   {day}
                 </button>
@@ -146,7 +150,7 @@ function RecurringDatesPicker({ dates, onChange }) {
               <div className="flex flex-wrap gap-1.5">
                 {dates.map((d) => (
                   <span key={d} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                    {(() => { try { return format(new Date(d), "MMM d"); } catch { return d; } })()}
+                    {(() => { try { const [y,m,dy] = d.split("-"); return format(new Date(y, m-1, dy), "MMM d"); } catch { return d; } })()}
                     <button type="button" onClick={() => toggleDate(d)} className="text-primary/50 hover:text-destructive cursor-pointer ml-0.5">&times;</button>
                   </span>
                 ))}
@@ -318,6 +322,14 @@ export default function AdminPage() {
     if (form.tags.length === 0) missing.push("Industry Tags (at least 1)");
     if (!form.description) missing.push("Description");
     if (missing.length > 0) { alert("Please fill in required fields:\n• " + missing.join("\n• ")); return; }
+    // Prevent past dates
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    if (form.date < todayStr) { alert("The event date cannot be in the past. Please select today or a future date."); return; }
+    if (form.recurring_dates && form.recurring_dates.length > 0) {
+      const pastRecurring = form.recurring_dates.filter((d) => d < todayStr);
+      if (pastRecurring.length > 0) { alert("Recurring dates cannot be in the past. Please remove past dates:\n• " + pastRecurring.join("\n• ")); return; }
+    }
     if (form.description.length > 1000) { alert("Description must be 1000 characters or fewer."); return; }
     // Prevent exact name duplicates when creating (not editing)
     if (!editId) {
@@ -823,11 +835,12 @@ export default function AdminPage() {
               <label className={labelClass}>Date *</label>
               <button type="button" onClick={() => up("_datePickerOpen", !form._datePickerOpen)}
                 className={`w-full px-3 py-2.5 rounded-lg border text-sm text-left transition cursor-pointer flex items-center justify-between ${form.date ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground hover:bg-muted"}`}>
-                <span>{form.date ? (() => { try { return format(new Date(form.date), "MMMM d, yyyy"); } catch { return form.date; } })() : "Select date"}</span>
+                <span>{form.date ? (() => { try { const [y,m,d] = form.date.split("-"); return format(new Date(y, m-1, d), "MMMM d, yyyy"); } catch { return form.date; } })() : "Select date"}</span>
                 <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </button>
+              {form.date && (() => { const n=new Date(); const t=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; return form.date < t ? <p className="text-xs text-red-500 font-semibold mt-1">This date is in the past. Please select a future date.</p> : null; })()}
               {form._datePickerOpen && (() => {
-                const dv = form._dateViewMonth || (form.date ? new Date(form.date) : new Date());
+                const dv = form._dateViewMonth || (form.date ? (() => { const [y,m] = form.date.split("-"); return new Date(y, m-1, 1); })() : new Date());
                 const dy = dv.getFullYear(), dm = dv.getMonth();
                 const dFirst = new Date(dy, dm, 1).getDay();
                 const dDays = new Date(dy, dm + 1, 0).getDate();
@@ -855,9 +868,12 @@ export default function AdminPage() {
                         if (day === null) return <div key={`de-${i}`} />;
                         const ds = `${dy}-${String(dm + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                         const isSel = form.date === ds;
+                        const nowD = new Date();
+                        const todayDs = `${nowD.getFullYear()}-${String(nowD.getMonth()+1).padStart(2,"0")}-${String(nowD.getDate()).padStart(2,"0")}`;
+                        const isPast = ds < todayDs;
                         return (
-                          <button key={ds} type="button" onClick={() => { up("date", ds); up("_datePickerOpen", false); }}
-                            className={`w-9 h-9 rounded-xl text-xs font-semibold transition cursor-pointer mx-auto flex items-center justify-center ${isSel ? "bg-primary text-white shadow-sm" : "hover:bg-primary/10 text-foreground"}`}>
+                          <button key={ds} type="button" onClick={() => { if (!isPast) { up("date", ds); up("_datePickerOpen", false); } }} disabled={isPast}
+                            className={`w-9 h-9 rounded-xl text-xs font-semibold transition mx-auto flex items-center justify-center ${isSel ? "bg-primary text-white shadow-sm cursor-pointer" : isPast ? "text-red-300 line-through cursor-not-allowed" : "hover:bg-primary/10 text-foreground cursor-pointer"}`}>
                             {day}
                           </button>
                         );

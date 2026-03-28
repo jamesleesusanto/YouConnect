@@ -204,6 +204,14 @@ export default function PlatformPage() {
       return filters.ageGroups.some((f) => oAges.includes(f));
     });
     if (filters.types.length > 0) result = result.filter((o) => filters.types.includes(o.opportunity_type));
+    // Hide events where the date has passed (with 24-hour grace period)
+    const now = new Date();
+    const yesterdayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const cutoffDate = `${yesterdayLocal.getFullYear()}-${String(yesterdayLocal.getMonth()+1).padStart(2,"0")}-${String(yesterdayLocal.getDate()).padStart(2,"0")}`;
+    result = result.filter((o) => {
+      if (!o.date) return true;
+      return o.date >= cutoffDate;
+    });
     // Distance sorting
     if (locationSort && userCoords) {
       result = result.map((o) => {
@@ -476,7 +484,7 @@ export default function PlatformPage() {
                     <td className="px-3 py-3 text-foreground text-sm break-words">{titleCase(opp.organization)}</td>
                     <td className="px-3 py-3 text-foreground text-sm break-words">{renderLocation(opp)}</td>
                     <td className="px-3 py-3 text-sm text-foreground">
-                      <div className="whitespace-nowrap">{opp.date && (() => { try { return format(new Date(opp.date), "MMM d, yyyy"); } catch { return opp.date; } })()}</div>
+                      <div className="whitespace-nowrap">{opp.date && (() => { try { const [y,m,d] = opp.date.split("-"); return format(new Date(y, m-1, d), "MMM d, yyyy"); } catch { return opp.date; } })()}</div>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-nowrap gap-1">
@@ -551,13 +559,14 @@ export default function PlatformPage() {
                   <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Age Group</p><p className="text-sm text-foreground mt-0.5">{Array.isArray(modalOpp.age_group) ? modalOpp.age_group.join(", ") : (modalOpp.age_group || "All Ages")}</p></div>
                   <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Location</p><p className="text-sm text-foreground mt-0.5 flex items-center gap-1">{modalOpp.location_mode === "Remote" ? (<><svg className="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> Remote</>) : modalOpp.location_mode === "Hybrid" ? <>{modalOpp.location} or Online</> : modalOpp.location || "TBD"}</p></div>
                   <div><p className="text-xs font-bold text-primary uppercase tracking-wide">Industry</p><div className="flex flex-wrap gap-1 mt-1">{modalOpp.tags?.map((tag) => <span key={tag} className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${TAG_COLORS[tag] || "bg-secondary text-secondary-foreground"}`}>{tag}</span>)}{(!modalOpp.tags || modalOpp.tags.length === 0) && <span className="text-sm text-muted-foreground">—</span>}</div></div>
-                  {modalOpp.date && (<div><p className="text-xs font-bold text-primary uppercase tracking-wide">Date & Time</p><p className="text-sm text-foreground mt-0.5">{(() => { try { return format(new Date(modalOpp.date), "MMMM d, yyyy"); } catch { return modalOpp.date; } })()}{modalOpp.time && (() => { const [h,m] = modalOpp.time.split(":"); const h24=parseInt(h); const h12=h24===0?12:h24>12?h24-12:h24; const ap=h24>=12?"PM":"AM"; return ` at ${h12}:${m} ${ap}`; })()}{modalOpp.timezone && ` ${modalOpp.timezone}`}</p></div>)}
+                  {modalOpp.date && (<div><p className="text-xs font-bold text-primary uppercase tracking-wide">Date & Time</p><p className="text-sm text-foreground mt-0.5">{(() => { try { const [y,m,d] = modalOpp.date.split("-"); return format(new Date(y, m-1, d), "MMMM d, yyyy"); } catch { return modalOpp.date; } })()}{modalOpp.time && (() => { const [h,m] = modalOpp.time.split(":"); const h24=parseInt(h); const h12=h24===0?12:h24>12?h24-12:h24; const ap=h24>=12?"PM":"AM"; return ` at ${h12}:${m} ${ap}`; })()}{modalOpp.timezone && ` ${modalOpp.timezone}`}</p></div>)}
                   {modalOpp.contact_email && (<div><p className="text-xs font-bold text-primary uppercase tracking-wide">Contact</p><p className="text-sm text-foreground mt-0.5">{modalOpp.contact_email}</p></div>)}
                 </div>
                 {/* Show future recurring dates for this opportunity */}
                 {modalOpp._parentId && (() => {
-                  const today = new Date().toISOString().split("T")[0];
-                  const siblings = filtered.filter((o) => (o._parentId || o.id) === modalOpp._parentId && o.date > modalOpp.date && o.date >= today);
+                  const now = new Date();
+                  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+                  const siblings = filtered.filter((o) => (o._parentId || o.id) === modalOpp._parentId && o.id !== modalOpp.id && o.date > modalOpp.date && o.date >= today).sort((a, b) => a.date.localeCompare(b.date));
                   if (siblings.length === 0) return null;
                   return (
                     <div className="mt-5">
@@ -565,7 +574,7 @@ export default function PlatformPage() {
                       <div className="flex flex-wrap gap-2 mt-1.5">
                         {siblings.map((s) => (
                           <span key={s.id} className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                            {(() => { try { return format(new Date(s.date), "MMM d, yyyy"); } catch { return s.date; } })()}
+                            {(() => { try { const [y,m,d] = s.date.split("-"); return format(new Date(y, m-1, d), "MMM d, yyyy"); } catch { return s.date; } })()}
                           </span>
                         ))}
                       </div>
