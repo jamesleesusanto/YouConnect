@@ -4,6 +4,79 @@ import Link from "next/link";
 import { useAuth } from "../../contexts/AuthContext";
 import { useEffect, useState, useRef } from "react";
 
+const CYCLING_WORDS = ["opportunity.", "internship.", "research position.", "job."];
+
+function Typewriter() {
+  const [wordIndex, setWordIndex] = useState(0);
+  const [text, setText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentWord = CYCLING_WORDS[wordIndex];
+    let timeout;
+
+    if (!isDeleting && text === currentWord) {
+      // Pause at full word
+      timeout = setTimeout(() => setIsDeleting(true), 2000);
+    } else if (isDeleting && text === "") {
+      // Move to next word
+      setIsDeleting(false);
+      setWordIndex((prev) => (prev + 1) % CYCLING_WORDS.length);
+    } else if (isDeleting) {
+      // Delete characters
+      timeout = setTimeout(() => setText(currentWord.substring(0, text.length - 1)), 50);
+    } else {
+      // Type characters
+      timeout = setTimeout(() => setText(currentWord.substring(0, text.length + 1)), 100);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [text, isDeleting, wordIndex]);
+
+  return (
+    <span className="text-primary">
+      {text}
+      <span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
+function StrikethroughAnimation() {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState(0); // 0=hidden, 1=show "weeks", 2=strikethrough, 3=show "seconds"
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !visible) setVisible(true); },
+      { threshold: 0.5 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const t1 = setTimeout(() => setPhase(1), 300);
+    const t2 = setTimeout(() => setPhase(2), 1500);
+    const t3 = setTimeout(() => setPhase(3), 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [visible]);
+
+  return (
+    <span ref={ref} className="inline">
+      <span className={`relative inline-block transition-all duration-500 ${phase >= 2 ? "text-muted-foreground/40" : "text-foreground"}`}>
+        weeks
+        <span className={`absolute left-0 right-0 top-1/2 h-[3px] bg-red-500 transition-all duration-500 ${phase >= 2 ? "w-full" : "w-0"}`} />
+      </span>
+      <br />
+      <span className={`text-emerald-500 font-bold transition-all duration-500 ${phase >= 3 ? "opacity-100" : "opacity-0"}`}>
+        seconds.
+      </span>
+    </span>
+  );
+}
+
 function AnimatedNumber({ target, suffix = "" }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -56,7 +129,7 @@ export default function Home() {
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground tracking-tight leading-[1.1] font-[var(--font-playfair)]">
               Find your next
               <br />
-              <span className="text-primary">opportunity.</span>
+              <Typewriter />
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mt-6 leading-relaxed max-w-xl">
               Youdemonia connects you with local internships,
@@ -73,6 +146,19 @@ export default function Home() {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Built for students — strikethrough animation */}
+      <section className="bg-foreground text-background py-20 sm:py-28">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.15] font-[var(--font-playfair)]">
+            Built for students who need opportunities in{" "}
+            <StrikethroughAnimation />
+          </h2>
+          <p className="text-background/60 mt-6 text-lg max-w-2xl leading-relaxed">
+            Youdemonia connects you with local internships, workshops, and volunteering events — all in your area.
+          </p>
         </div>
       </section>
 
