@@ -21,6 +21,8 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
+  const [codeVerified, setCodeVerified] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
@@ -49,11 +51,17 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isSignUp) {
-        await signup(email, password, name, selectedRole);
+        // Step 1: Send verification code (don't create account yet)
+        const res = await fetch("/api/send-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || "Failed to send verification code."); setLoading(false); return; }
         setVerificationSent(true);
       } else {
         const cred = await login(email, password, rememberMe);
-        // Check email verification
         if (!cred.user.emailVerified) {
           const { getAuth, sendEmailVerification, signOut } = await import("firebase/auth");
           const auth = getAuth();
@@ -72,6 +80,45 @@ export default function LoginPage() {
       else if (code.includes("invalid-email")) setError("Please enter a valid email address.");
       else setError(err?.message || "Something went wrong.");
     } finally { setLoading(false); }
+  }
+
+  async function handleVerifyCode() {
+    setError("");
+    const code = verificationCode.join("");
+    if (code.length !== 6) { setError("Please enter the full 6-digit code."); return; }
+    setLoading(true);
+    try {
+      // Step 2: Verify the code
+      const res = await fetch("/api/send-verification", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Invalid code."); setLoading(false); return; }
+      // Step 3: Code verified — now create the Firebase account
+      await signup(email, password, name, selectedRole);
+      setCodeVerified(true);
+    } catch (err) {
+      const errCode = err?.code || "";
+      if (errCode.includes("already-in-use")) setError("An account with this email already exists.");
+      else setError(err?.message || "Failed to create account.");
+    } finally { setLoading(false); }
+  }
+
+  async function handleResendCode() {
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch("/api/send-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Failed to resend code."); }
+      else { setSuccess("New code sent! Check your inbox."); }
+    } catch { setError("Failed to resend code."); }
+    finally { setLoading(false); }
   }
 
   async function handleForgotPassword(e) {
@@ -102,29 +149,103 @@ export default function LoginPage() {
     } finally { setLoading(false); }
   }
 
-  // Verification sent screen
-  if (verificationSent) {
+  // Verification code entry screen
+  if (verificationSent && !codeVerified) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-sm border border-border/60 p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Enter Verification Code</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              We&apos;ve sent a 6-digit code to <span className="font-semibold text-foreground">{email}</span>
+            </p>
+
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-5">{error}</div>}
+            {success && <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm mb-5">{success}</div>}
+
+            {/* 6-digit code input */}
+            <div className="flex justify-center gap-3 mb-6">
+              {verificationCode.map((digit, i) => (
+                <input
+                  key={i}
+                  id={`code-${i}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    const newCode = [...verificationCode];
+                    newCode[i] = val;
+                    setVerificationCode(newCode);
+                    if (val && i < 5) document.getElementById(`code-${i + 1}`)?.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" && !verificationCode[i] && i > 0) {
+                      document.getElementById(`code-${i - 1}`)?.focus();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text").replace(/[^0-9]/g, "").slice(0, 6);
+                    if (pasted.length > 0) {
+                      const newCode = [...verificationCode];
+                      for (let j = 0; j < 6; j++) newCode[j] = pasted[j] || "";
+                      setVerificationCode(newCode);
+                      const focusIdx = Math.min(pasted.length, 5);
+                      document.getElementById(`code-${focusIdx}`)?.focus();
+                    }
+                  }}
+                  className="w-12 h-14 text-center text-2xl font-bold border-2 border-border rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              ))}
+            </div>
+
+            <button onClick={handleVerifyCode} disabled={loading || verificationCode.join("").length !== 6}
+              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold py-3 rounded-xl text-sm transition cursor-pointer">
+              {loading ? "Verifying..." : "Verify & Create Account"}
+            </button>
+
+            <div className="flex items-center justify-between mt-4">
+              <button onClick={handleResendCode} disabled={loading} className="text-sm text-primary font-medium hover:underline cursor-pointer">
+                Resend code
+              </button>
+              <button onClick={() => { setVerificationSent(false); setVerificationCode(["", "", "", "", "", ""]); setError(""); setSuccess(""); }}
+                className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+                Change email
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-4">Don&apos;t see it? Check your spam folder.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Account created successfully screen
+  if (codeVerified) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-sm border border-border/60 p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Verify Your Email</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">Account Created!</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              We&apos;ve sent a verification link to <span className="font-semibold text-foreground">{email}</span>. Please check your inbox and click the link to activate your account.
+              Your email has been verified and your account is ready.
             </p>
             {selectedRole === "organizer" && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 mb-4">
                 Your organizer account is pending admin approval. You&apos;ll be able to post opportunities once approved.
               </div>
             )}
-            <p className="text-xs text-muted-foreground mb-6">
-              Don&apos;t see it? Check your spam folder.
-            </p>
             <button
-              onClick={() => { setVerificationSent(false); setIsSignUp(false); setPassword(""); setConfirmPassword(""); }}
+              onClick={() => { setVerificationSent(false); setCodeVerified(false); setIsSignUp(false); setPassword(""); setConfirmPassword(""); }}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl text-sm transition cursor-pointer"
             >
               Go to Sign In

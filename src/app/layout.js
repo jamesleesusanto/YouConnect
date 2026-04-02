@@ -1,10 +1,11 @@
-import { Geist } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../../contexts/AuthContext";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
 
-const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"] });
 
 export const metadata = {
   title: "YouConnect by YouDemonia",
@@ -15,7 +16,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${geist.variable} antialiased min-h-screen flex flex-col bg-background`}>
+      <body className={`${inter.variable} ${playfair.variable} antialiased min-h-screen flex flex-col bg-background font-[var(--font-inter)]`}>
         <AuthProvider>
           <Navbar />
           <main className="flex-1">{children}</main>

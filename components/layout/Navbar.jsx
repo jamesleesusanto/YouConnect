@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { label: "Tutorials", path: "/tutorials" },
   // { label: "Past Events", path: "/past-events" },
   // { label: "Press", path: "/press" },
-  { label: "Contact Us", path: "/contact" },
+  { label: "Contact Us", path: "#footer" },
 ];
 
 export default function Navbar() {
@@ -42,17 +42,27 @@ export default function Navbar() {
           {/* Desktop Nav — right-aligned */}
           <nav className="hidden xl:flex items-center gap-1 ml-auto mr-3">
             {allLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  pathname === link.path
-                    ? "text-primary bg-accent"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {link.label}
-              </Link>
+              link.path === "#footer" ? (
+                <button
+                  key={link.path}
+                  onClick={() => document.getElementById("footer")?.scrollIntoView({ behavior: "smooth" })}
+                  className="px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  {link.label}
+                </button>
+              ) : (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    pathname === link.path
+                      ? "text-primary bg-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </nav>
 
@@ -113,18 +123,28 @@ export default function Navbar() {
         <div className="xl:hidden border-t border-border/50 bg-white">
           <nav className="max-w-7xl mx-auto px-4 py-3 space-y-1">
             {allLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                onClick={() => setMobileOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                  pathname === link.path
-                    ? "text-primary bg-accent"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {link.label}
-              </Link>
+              link.path === "#footer" ? (
+                <button
+                  key={link.path}
+                  onClick={() => { setMobileOpen(false); setTimeout(() => document.getElementById("footer")?.scrollIntoView({ behavior: "smooth" }), 100); }}
+                  className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                >
+                  {link.label}
+                </button>
+              ) : (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    pathname === link.path
+                      ? "text-primary bg-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
             <div className="pt-3 border-t border-border/50">
               {user ? (

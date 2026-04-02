@@ -1,48 +1,118 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
-const TUTORIALS = [
-  { id: "1", title: "Getting Started with YouConnect", category: "Getting Started", content: "Welcome to YouConnect! Here's how to get started:\n\n1. Browse the Platform — Head to the YouConnect Platform tab to see all available opportunities.\n2. Use Filters — Narrow your search by industry, age group, or opportunity type.\n3. Save Favorites — Click the heart icon on any opportunity to save it for later.\n4. Export — Download your favorited opportunities as a CSV file to keep track." },
-  { id: "2", title: "How to Find the Right Opportunity", category: "Finding Opportunities", content: "Finding the perfect match:\n\n- Know your interests — Think about what industries excite you (STEM, healthcare, environment, etc.).\n- Consider your schedule — Filter by date to find opportunities that work with your calendar.\n- Check location — Use location filters to find local opportunities.\n- Read descriptions — Click 'More Info' for full details about each opportunity." },
-  { id: "3", title: "Tips for Applying to Opportunities", category: "Applying", content: "Make your application stand out:\n\n- Be genuine — Share why you're passionate about the cause.\n- Highlight experience — Even informal experience counts (school clubs, family projects).\n- Follow instructions — Read the application requirements carefully.\n- Follow up — If you haven't heard back in a week, send a polite follow-up email." },
-  { id: "4", title: "For Organizers: Posting Opportunities", category: "For Organizers", content: "Want to post your organization's opportunities?\n\n1. Go to the Organizer's Portal tab.\n2. Fill in the details about your opportunity.\n3. Submit for review — our team will approve it within 24-48 hours.\n4. Your opportunity will appear on the platform for students to discover!" },
+const FAQS = [
+  {
+    q: "How Do I Know All Events Are Safe/Secure?",
+    a: "Safety is a top priority for the Youdemonia Team. Through our organizer registration process, we manually verify and meet with each organization seeking to join our network to ensure ONLY high-quality, safe events are published on our platform.",
+  },
+  {
+    q: "What Types of Opportunities Are Available on Youdemonia?",
+    a: "We offer a wide range of internships, volunteering events, community-building workshops, and miscellaneous education-related opportunities on our platform. However, our team is always working on expanding these options. In the near future, we plan to introduce scholarship opportunities as well!",
+  },
+  {
+    q: "How is Youdemonia Structured?",
+    a: "Youdemonia is a 501(c)(3) Pending Organization headquartered at The University of Pennsylvania. We operate under a board of directors and have an international team that works to find local resources and integrate them into the larger Youdemonia platform.",
+  },
+  {
+    q: "How Can I Join Youdemonia?",
+    a: "We are excited to offer social media content creation positions year-round for those interested in expanding their marketing/social media portfolios. Youdemonia also accepts team members for our Operations and Outreach departments on a need-based basis. For more information, send us an email at nathan@youdemonia.org",
+  },
 ];
 
 export default function TutorialsPage() {
-  const [openId, setOpenId] = useState(null);
+  const [openIdx, setOpenIdx] = useState(null);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="text-center mb-12">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-        </div>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">Tutorials & Guides</h1>
-        <p className="text-muted-foreground mt-2 max-w-lg mx-auto">Everything you need to know about finding and applying to opportunities.</p>
-      </div>
+    <div>
+      {/* Content with same gradient as homepage hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-accent/40" />
+        <div className="absolute top-20 right-20 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 left-10 w-48 h-48 bg-accent/40 rounded-full blur-2xl" />
+        <div className="absolute top-[500px] left-[-100px] w-[300px] h-[300px] bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-[900px] right-[-80px] w-[250px] h-[250px] bg-accent/30 rounded-full blur-3xl" />
 
-      <div className="space-y-3">
-        {TUTORIALS.map((t) => (
-          <div key={t.id} className="bg-white rounded-xl border border-border/60 shadow-sm overflow-hidden">
-            <button onClick={() => setOpenId(openId === t.id ? null : t.id)} className="w-full flex items-center justify-between px-6 py-5 text-left cursor-pointer hover:bg-accent/30 transition">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{t.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t.category}</p>
-                </div>
-              </div>
-              <svg className={`w-4 h-4 text-muted-foreground transition-transform ${openId === t.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {openId === t.id && (
-              <div className="px-6 pb-6 pl-19 text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{t.content}</div>
-            )}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 relative z-10">
+          {/* Hero */}
+          <div className="mb-12">
+            <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight font-[var(--font-playfair)] relative inline-block">
+              <span className="absolute left-[0px] right-[0px] bottom-[2px] h-[45%] bg-primary/20 -z-10 rounded-sm" />
+              Welcome to our tutorials page!
+            </h1>
+            <p className="text-foreground mt-5 text-base">
+              If you are an organizer looking to publish your events on our platform, click here:{" "}
+              <Link href="/login" className="text-foreground font-semibold underline decoration-2 underline-offset-2 hover:text-primary transition">
+                uploading events tutorial
+              </Link>
+            </p>
+            <p className="text-muted-foreground mt-4 text-base">
+              All other users see the video tutorial below to get started!
+            </p>
           </div>
-        ))}
-      </div>
+
+          {/* User Video Tutorial */}
+          <div className="mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight font-[var(--font-playfair)] mb-4 underline decoration-primary/30 decoration-2 underline-offset-4">User Video Tutorial</h2>
+            <p className="text-foreground text-sm leading-relaxed">
+              Are you looking for academic and career-building events geared toward students in your local area?
+              Look no further, Youdemonia&apos;s Opportunity Awareness Platform is here!{" "}
+              <span className="text-primary underline decoration-1 underline-offset-2">Check out this user tutorial video below to see how it works.</span>
+            </p>
+          </div>
+
+          {/* Video Embed Placeholder */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-border/40 shadow-sm aspect-video flex items-center justify-center relative overflow-hidden mb-16">
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 hover:bg-primary/20 transition cursor-pointer">
+                <svg className="w-10 h-10 text-primary ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Video tutorial coming soon</p>
+              <p className="text-xs text-muted-foreground mt-1">YouTube or Vimeo embed will go here</p>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-border/40 mb-16" />
+
+          {/* FAQ Section */}
+          <div className="pb-8">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight font-[var(--font-playfair)] text-center mb-10">
+              Frequently Asked Questions
+            </h2>
+
+            <div className="space-y-3">
+              {FAQS.map((faq, i) => (
+                <div key={i} className="bg-white/80 backdrop-blur-sm rounded-xl border border-border/40 shadow-sm overflow-hidden">
+                  <button
+                    onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                    className="w-full flex items-center justify-between px-6 py-5 text-left cursor-pointer hover:bg-white/90 transition"
+                  >
+                    <span className="font-semibold text-foreground pr-4">{faq.q}</span>
+                    <svg
+                      className={`w-5 h-5 text-primary shrink-0 transition-transform duration-200 ${openIdx === i ? "rotate-180" : ""}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ${openIdx === i ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
+                  >
+                    <div className="px-6 pb-6 text-sm text-foreground leading-relaxed">
+                      {faq.a}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

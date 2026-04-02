@@ -62,7 +62,7 @@ export async function POST(req) {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "YouConnect <onboarding@resend.dev>",
+        from: "YouConnect <noreply@favorites.youdemonia.org>",
         to: [to],
         subject: `Your YouConnect Favorites (${favorites.length} opportunities)`,
         html,
