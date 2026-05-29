@@ -355,6 +355,7 @@ export default function Home() {
               ))}
             </div>
           </div>
+          
 
           {/* Definition card with depth effect */}
           {/* <div className="relative max-w-3xl mx-auto">
