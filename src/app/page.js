@@ -41,6 +41,102 @@ function Typewriter() {
   );
 }
 
+const FADE_WORDS = [
+  { text: "Thousands", cn: "text-primary font-bold", para: 1 },
+  { text: "of", cn: "text-foreground font-semibold", para: 1 },
+  { text: "resources", cn: "text-foreground font-semibold", para: 1 },
+  { text: "are", cn: "text-foreground font-semibold", para: 1 },
+  { text: "unused", cn: "text-foreground font-semibold", para: 1 },
+  { text: "because", cn: "text-foreground font-semibold", para: 1 },
+  { text: "students", cn: "text-primary font-bold", para: 1 },
+  { text: "don't", cn: "text-primary font-bold", para: 1 },
+  { text: "know", cn: "text-primary font-bold", para: 1 },
+  { text: "about", cn: "text-primary font-bold", para: 1 },
+  { text: "them.", cn: "text-primary font-bold", para: 1 },
+  { text: "At", cn: "text-foreground font-semibold", para: 2 },
+  { text: "Youdemonia,", cn: "text-foreground font-semibold", para: 2 },
+  { text: "we", cn: "text-foreground font-semibold", para: 2 },
+  { text: "work", cn: "text-foreground font-semibold", para: 2 },
+  { text: "to", cn: "text-foreground font-semibold", para: 2 },
+  { text: "increase", cn: "text-primary font-bold", para: 2 },
+  { text: "accessibility", cn: "text-primary font-bold", para: 2 },
+  { text: "to", cn: "text-foreground font-semibold", para: 2 },
+  { text: "these", cn: "text-foreground font-semibold", para: 2 },
+  { text: "resources", cn: "text-foreground font-semibold", para: 2 },
+  { text: "through", cn: "text-foreground font-semibold", para: 2 },
+  { text: "an", cn: "text-foreground font-semibold", para: 2 },
+  { text: "online", cn: "text-foreground font-semibold", para: 2 },
+  { text: "platform", cn: "text-foreground font-semibold", para: 2 },
+  { text: "for", cn: "text-foreground font-semibold", para: 2 },
+  { text: "all", cn: "text-foreground font-semibold", para: 2 },
+  { text: "types", cn: "text-foreground font-semibold", para: 2 },
+  { text: "of", cn: "text-foreground font-semibold", para: 2 },
+  { text: "opportunities.", cn: "text-foreground font-semibold", para: 2 },
+];
+
+function ScrollFadeText() {
+  const wordRefs = useRef([]);
+  const [opacities, setOpacities] = useState(() => FADE_WORDS.map(() => 0.08));
+
+  useEffect(() => {
+    let ticking = false;
+    const compute = () => {
+      ticking = false;
+      const vh = window.innerHeight;
+      // A word fades from dim -> full as it rises through this band.
+      const revealStart = vh * 0.9; // just above the fold
+      const revealEnd = vh * 0.45; // middle of the screen
+      const next = wordRefs.current.map((el) => {
+        if (!el) return 0.08;
+        const top = el.getBoundingClientRect().top;
+        const p = (revealStart - top) / (revealStart - revealEnd);
+        return Math.min(1, Math.max(0.08, p));
+      });
+      setOpacities(next);
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(compute);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    compute();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  const renderWords = (para) =>
+    FADE_WORDS.map((w, gi) =>
+      w.para !== para ? null : (
+        <span
+          key={gi}
+          ref={(el) => (wordRefs.current[gi] = el)}
+          className={w.cn}
+          style={{ opacity: opacities[gi], transition: "opacity 0.15s ease-out" }}
+        >
+          {w.text}{" "}
+        </span>
+      )
+    );
+
+  return (
+    <section className="py-12 sm:py-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-2xl sm:text-3xl lg:text-4xl leading-snug">
+          {renderWords(1)}
+        </div>
+        <div className="mt-8 text-2xl sm:text-3xl lg:text-4xl leading-snug font-medium">
+          {renderWords(2)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StrikethroughAnimation() {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -65,14 +161,14 @@ function StrikethroughAnimation() {
 
   return (
     <span ref={ref} className="inline">
-      <span className={`relative inline-block transition-colors duration-700 ${phase >= 2 ? "text-white/25" : "text-white"}`}>
+      <span className={`relative inline-block transition-colors duration-700 ${phase >= 2 ? "text-foreground/25" : "text-foreground"}`}>
         weeks
         <span
           className={`absolute left-0 top-[58%] h-[4px] bg-red-500 rounded-full transition-all duration-700 ease-out ${phase >= 2 ? "w-full" : "w-0"}`}
         />
       </span>
       <br />
-      <span className={`text-emerald-400 font-bold transition-all duration-700 ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+      <span className={`text-emerald-600 font-bold transition-all duration-700 ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
         seconds.
       </span>
     </span>
@@ -110,12 +206,96 @@ function AnimatedNumber({ target, suffix = "" }) {
 
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
+function SwipeReveal({ children, onComplete, delay = 0 }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !visible) {
+          setVisible(true);
+          // Fire onComplete after the swipe animation finishes (~800ms + delay)
+          if (onComplete) setTimeout(onComplete, 800 + delay);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  return (
+    <div ref={ref} style={{ overflow: "hidden" }}>
+      <div
+        style={{
+          transform: visible ? "translateX(0)" : "translateX(-100%)",
+          opacity: visible ? 1 : 0,
+          transition: `transform 0.75s cubic-bezier(0.22,1,0.36,1) ${delay}ms, opacity 0.4s ease ${delay}ms`,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function HowItWorksRight() {
+  const [stepsReady, setStepsReady] = useState(false);
+
+  return (
+    <div>
+      <SwipeReveal onComplete={() => setStepsReady(true)}>
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight font-[var(--font-playfair)] mb-4">
+          See how it works.
+        </h2>
+      </SwipeReveal>
+      <SwipeReveal delay={120}>
+        <p className="text-white/50 text-lg mb-10 max-w-md leading-relaxed">
+          Every opportunity is vetted, organized, and ready for you. Here&apos;s how simple it is.
+        </p>
+      </SwipeReveal>
+      <div className="space-y-6">
+        {[
+          { step: "1", title: "Browse opportunities", desc: "Search and filter through hundreds of curated opportunities from vetted organizations in your area." },
+          { step: "2", title: "Save your favorites", desc: "Favorite the opportunities you love and export them as a list for easy reference." },
+          { step: "3", title: "Connect & apply", desc: "Click through to apply or learn more directly from the organization. No middleman." },
+        ].map((item, i) => (
+          <div
+            key={item.step}
+            style={{
+              opacity: stepsReady ? 1 : 0,
+              transform: stepsReady ? "translateY(0)" : "translateY(16px)",
+              transition: `opacity 0.6s ease ${i * 220}ms, transform 0.6s ease ${i * 220}ms`,
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-sm font-bold text-white">{item.step}</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                <p className="text-white/40 text-sm mt-1 leading-relaxed">{item.desc}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-10">
+        <Link href="/opportunities" className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-xl hover:bg-primary/90 transition text-base">
+          Start Browsing
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { user } = useAuth();
 
   return (
-    <div>
+    <div className="bg-gradient-to-b from-[#f3efff] via-[#faf8ff] to-[#f3efff]">
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-accent/40" />
@@ -124,7 +304,7 @@ export default function Home() {
         <div className="absolute top-[40%] left-[60%] w-96 h-96 bg-pink-200/25 rounded-full blur-3xl" />
         <div className="absolute top-10 left-[30%] w-64 h-64 bg-purple-200/30 rounded-full blur-3xl" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 sm:py-44 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 sm:py-44 relative sm:pt-32 sm:pb-32">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent border border-primary/20 text-sm font-medium text-accent-foreground mb-6">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
@@ -153,81 +333,37 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Built for students — strikethrough animation */}
-      <section className="bg-[#0f1729] text-white py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left side — text, centered within its column */}
-            <div className="text-center md:text-left md:pl-12">
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.15] font-[var(--font-playfair)]">
-                Built for students who need opportunities in{" "}
-                <StrikethroughAnimation />
-              </h2>
-              <p className="text-white/50 mt-6 text-lg max-w-lg leading-relaxed">
-                Youdemonia skips the hassle and pairs you with curated opportunities happening in your local area, giving the resources you need.
-              </p>
-            </div>
-            {/* Right side — reserved for future content */}
-            <div className="hidden md:block">
-            </div>
-          </div>
-        </div>
-      </section>
+      <ScrollFadeText />
 
       {/* YOUDEMONIA Definition + Stats — two column layout */}
-      <section className="relative py-20 sm:py-28 overflow-hidden bg-[#faf9ff]">
-        <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-primary/8 rounded-full -translate-x-1/2 -translate-y-1/4" />
+      <section className="relative py-20 sm:py-35 overflow-hidden">
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left — stacked stat cards */}
-            <div className="relative hidden lg:block" style={{ minHeight: 520 }}>
-              {/* Single continuous light purple curve */}
-              <svg className="absolute top-[60px] left-[60px] w-[300px] h-[420px] z-0" viewBox="0 0 300 420" fill="none">
-                <path d="M40 10 C120 40, 220 80, 240 160 C260 240, 100 280, 80 340 C60 400, 140 420, 200 400" stroke="#c4b5fd" strokeWidth="15" strokeLinecap="round" fill="none" />
-              </svg>
-
-              {/* Card 1 — top left */}
-              <div className="absolute top-0 left-0 w-[190px] bg-white rounded-2xl border border-border/60 p-6 shadow-sm text-center z-10">
-                <p className="text-4xl font-black text-foreground"><AnimatedNumber target="500" suffix="+" /></p>
-                <p className="text-sm text-muted-foreground mt-1 uppercase tracking-wider font-medium">Communities</p>
-              </div>
-
-              {/* Card 2 — middle right */}
-              <div className="absolute top-[190px] left-[200px] w-[190px] bg-white rounded-2xl border border-border/60 p-6 shadow-md text-center z-10">
-                <p className="text-4xl font-black text-foreground"><AnimatedNumber target="120" suffix="+" /></p>
-                <p className="text-sm text-muted-foreground mt-1 uppercase tracking-wider font-medium">Opportunities</p>
-              </div>
-
-              {/* Card 3 — bottom left */}
-              <div className="absolute top-[380px] left-[40px] w-[190px] bg-white rounded-2xl border border-border/60 p-6 shadow-sm text-center z-10">
-                <p className="text-4xl font-black text-foreground"><AnimatedNumber target="3000" suffix="+" /></p>
-                <p className="text-sm text-muted-foreground mt-1 uppercase tracking-wider font-medium">Students Reached</p>
-              </div>
-            </div>
-
-            {/* Mobile stats fallback — horizontal row */}
-            <div className="lg:hidden grid grid-cols-3 gap-4 mb-8">
+          {/* Impact stats — single horizontal row */}
+          <div className="mb-16">
+            <h2 className="px-4 sm:px-8 text-3xl sm:text-4xl font-bold tracking-tight font-[var(--font-playfair)] text-foreground mb-8">The Numbers Speak For Themselves</h2>
+            <div className="grid grid-cols-3 divide-x-2 divide-primary/40">
               {[
                 { label: "Communities", value: "500", suffix: "+" },
                 { label: "Opportunities", value: "120", suffix: "+" },
                 { label: "Students Reached", value: "3000", suffix: "+" },
               ].map((s) => (
-                <div key={s.label} className="text-center border border-border/60 rounded-2xl bg-white p-4">
-                  <p className="text-2xl font-black text-foreground"><AnimatedNumber target={s.value} suffix={s.suffix} /></p>
-                  <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">{s.label}</p>
+                <div key={s.label} className="text-left px-4 sm:px-8">
+                  <p className="text-4xl sm:text-6xl font-bold text-violet-800 tracking-tight font-[var(--font-playfair)]"><AnimatedNumber target={s.value} suffix={s.suffix} /></p>
+                  <p className="text-base sm:text-lg text-muted-foreground mt-2 leading-relaxed">{s.label}</p>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Right — Definition card with depth effect */}
-            <div className="relative">
-              {/* Subtle depth glow behind the card */}
+          {/* Definition card with depth effect */}
+          {/* <div className="relative max-w-3xl mx-auto">
+              
               <div className="absolute inset-[-8px] rounded-[28px] bg-gradient-to-br from-border/30 via-border/20 to-border/10 z-0" />
               <div className="absolute inset-[-3px] rounded-[26px] bg-white/60 z-0" />
 
               <div className="relative bg-white rounded-3xl border border-primary/15 shadow-lg p-10 sm:p-14 z-10">
-                {/* Purple accent bar at top */}
+                
                 <div className="absolute top-0 left-10 right-10 h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40 rounded-b-full" />
 
                 <div className="flex items-center gap-4 mb-2 mt-2">
@@ -272,13 +408,87 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
+            </div> */}
+          </div>
+      </section>
+
+      {/* Platform Preview + How It Works — dark section */}
+      <section className="bg-gradient-to-br from-[#0f1f2e] via-[#141b30]/95 to-[#1e1545]/80 text-white pt-40 pb-20 sm:pt-32 sm:pb-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
+            {/* Left — Platform preview mockup */}
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              {/* Tab bar */}
+              <div className="flex items-center gap-1 px-4 pt-4 pb-3 border-b border-border/40">
+                <span className="px-4 py-1.5 rounded-full bg-primary text-white text-xs font-semibold">Platform</span>
+                <span className="px-4 py-1.5 rounded-full text-xs font-medium text-muted-foreground">Favorites</span>
+                <span className="px-4 py-1.5 rounded-full text-xs font-medium text-muted-foreground">Export</span>
+              </div>
+              {/* Mock content */}
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider">YouConnect Platform</p>
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 rounded-lg bg-muted text-xs text-muted-foreground">All Types</span>
+                    <span className="px-3 py-1 rounded-lg bg-muted text-xs text-muted-foreground">Location</span>
+                  </div>
+                </div>
+                {/* Table rows */}
+                <div className="space-y-2">
+                  {[
+                    { name: "Youth Leadership Summit", type: "Workshop", org: "City Council", loc: "Philadelphia, PA" },
+                    { name: "STEM Research Internship", type: "Internship", org: "Penn Labs", loc: "Philadelphia, PA" },
+                    { name: "Community Garden Build", type: "Volunteering", org: "Green Philly", loc: "Philadelphia, PA" },
+                    { name: "College Prep Workshop", type: "Workshop", org: "Youdemonia", loc: "Detroit, MI" },
+                    { name: "Coding Bootcamp", type: "Education", org: "TechBridge", loc: "Remote" },
+                  ].map((row, i) => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition text-foreground">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{row.name}</p>
+                        <p className="text-xs text-muted-foreground">{row.org}</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary shrink-0">{row.type}</span>
+                      <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">{row.loc}</span>
+                      <svg className="w-4 h-4 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-3 text-center">Showing 5 of 120+ opportunities</p>
+              </div>
             </div>
+
+            {/* Right — How It Works steps */}
+            <HowItWorksRight />
           </div>
         </div>
       </section>
 
+      {/* Built for students — strikethrough animation */}
+
+      {/* <section className="text-foreground py-20 sm:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            
+            <div className="text-center md:text-left md:pl-12">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.15] font-[var(--font-playfair)]">
+                Built for students who need opportunities in{" "}
+                <StrikethroughAnimation />
+              </h2>
+              <p className="text-muted-foreground mt-6 text-lg max-w-lg leading-relaxed">
+                Youdemonia skips the hassle and pairs you with curated opportunities happening in your local area, giving the resources you need.
+              </p>
+            </div>
+            
+            <div className="hidden md:block">
+            </div>
+          </div>
+        </div>
+      </section> */}
+
+
+
       {/* Fading text section */}
-      <section className="py-20 sm:py-28 bg-gradient-to-b from-[#faf9ff] to-white">
+      {/* <section className="py-20 sm:py-28 bg-gradient-to-b from-[#faf9ff] to-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-xl sm:text-2xl leading-relaxed font-medium">
             <span className="text-primary font-semibold">Thousands</span>
@@ -291,10 +501,10 @@ export default function Home() {
             <span className="text-foreground/40"> to these resources through an online platform for all types of opportunities.</span>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* How It Works */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      {/* <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight font-[var(--font-playfair)]">How It Works</h2>
           <p className="text-muted-foreground mt-3 max-w-lg mx-auto">Three simple steps to find the right community opportunity.</p>
@@ -319,13 +529,13 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* Photo Gallery Cards */}
-      <section className="bg-accent/30 py-20">
+      {/* <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Card 1: Career Symposium / Meet The Team */}
+
             <Link href="/team" className="group relative bg-white rounded-2xl border border-border/40 overflow-hidden shadow-sm hover:shadow-lg transition-all">
               <div className="flex flex-wrap gap-2 p-4 pb-0">
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-white">Career Symposium</span>
@@ -347,7 +557,7 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Card 2: Community Events */}
+
             <Link href="/events" className="group relative bg-accent/60 rounded-2xl border border-primary/10 overflow-hidden shadow-sm hover:shadow-lg transition-all">
               <div className="flex flex-wrap gap-2 p-4 pb-0">
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-white">Career Symposium</span>
@@ -369,7 +579,7 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Card 3: #Youdemonia / Support */}
+
             <a href="https://www.instagram.com/youdemonia_org/" target="_blank" rel="noopener noreferrer" className="group relative bg-white rounded-2xl border border-border/40 overflow-hidden shadow-sm hover:shadow-lg transition-all">
               <div className="flex flex-wrap gap-2 p-4 pb-0">
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500 text-white">Career Symposium</span>
@@ -391,9 +601,9 @@ export default function Home() {
             </a>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      {/* CTA */}
+{/* 
       <section className="bg-primary text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <h2 className="text-3xl font-bold tracking-tight font-[var(--font-playfair)]">Ready to make an impact?</h2>
@@ -405,7 +615,7 @@ export default function Home() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
           </Link>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 }

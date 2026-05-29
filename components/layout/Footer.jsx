@@ -42,10 +42,10 @@ export default function Footer() {
               </a>
             </div>
             <div className="flex gap-3">
-              <Link href="/bylaws" className="px-5 py-2 rounded-lg bg-background text-foreground font-semibold text-sm hover:bg-background/90 transition">
+              <Link href="/bylaws" className="px-5 py-2 rounded-lg bg-background text-foreground font-semibold text-sm hover:bg-primary hover:text-white transition-colors">
                 Bylaws
               </Link>
-              <Link href="/donate" className="px-5 py-2 rounded-lg bg-background text-foreground font-semibold text-sm hover:bg-background/90 transition">
+              <Link href="/donate" className="px-5 py-2 rounded-lg bg-background text-foreground font-semibold text-sm hover:bg-primary hover:text-white transition-colors">
                 Donate
               </Link>
             </div>
