@@ -37,3 +37,5 @@ Thumbs.db
 
 # Optional: local test output
 /test-results
+
+page.js.v*
