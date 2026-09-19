@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -13,6 +13,7 @@ import {
   Sparkle,
   MapPin,
   Star,
+  TrendingUp,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -155,7 +156,109 @@ const PREVIEW_ROWS = [
   { name: "Community Garden Build", type: "Volunteering", org: "Green Philly", loc: "Philadelphia, PA" },
   { name: "College Prep Workshop", type: "Workshop", org: "Youdemonia", loc: "Detroit, MI" },
   { name: "Coding Bootcamp", type: "Education", org: "TechBridge", loc: "Remote" },
+  { name: "Marine Biology Fellowship", type: "Research", org: "Ocean Institute", loc: "San Diego, CA" },
+  { name: "Hospital Volunteer Corps", type: "Volunteering", org: "Chicago Med", loc: "Chicago, IL" },
+  { name: "Robotics Mentorship", type: "Mentorship", org: "TechBridge", loc: "Austin, TX" },
 ];
+
+const SEARCH_CHIPS = ["Internships", "Workshops", "Research", "Volunteering", "Remote", "Scholarships"];
+const TRENDING = ["STEM Research Internship", "Coding Bootcamp", "Hospital Volunteer Corps"];
+
+function HeroSearch() {
+  const [q, setQ] = useState("");
+  const results = useMemo(() => {
+    if (!q.trim()) return [];
+    const s = q.toLowerCase();
+    return PREVIEW_ROWS.filter(
+      (r) => (r.name + r.type + r.loc).toLowerCase().includes(s)
+    ).slice(0, 5);
+  }, [q]);
+
+  return (
+    <div className="mt-10 w-full max-w-2xl">
+      {/* Search box — styled to match the brutalist theme */}
+      <div className="relative">
+        <div
+          className={`flex items-center gap-3 rounded-2xl border-2 border-[#1a1625] bg-white px-5 py-4 ${hardShadow} transition-shadow ${results.length ? "rounded-b-none shadow-none" : ""}`}
+        >
+          <Search className="size-5 shrink-0 text-[#1a1625]/40" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder='Try "research", "remote", or "workshop"…'
+            className="w-full bg-transparent text-base font-medium outline-none placeholder:text-[#1a1625]/35 text-[#1a1625]"
+            aria-label="Search opportunities"
+          />
+          {q && (
+            <button
+              onClick={() => setQ("")}
+              className="shrink-0 text-[#1a1625]/30 hover:text-[#1a1625]/60 transition-colors"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Dropdown results */}
+        {results.length > 0 && (
+          <div className={`absolute z-20 w-full overflow-hidden rounded-b-2xl border-2 border-t-0 border-[#1a1625] bg-white text-left ${hardShadow}`}>
+            {results.map((r) => (
+              <Link
+                key={r.name}
+                href="/opportunities"
+                className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-[#c8f135]/20 border-t border-[#1a1625]/10 first:border-t-0"
+              >
+                <Search className="size-4 shrink-0 text-[#1a1625]/30" />
+                <span className="flex-1 text-sm font-semibold text-[#1a1625]">{r.name}</span>
+                <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                  {r.type}
+                </span>
+                <span className="hidden shrink-0 items-center gap-1 font-mono text-xs text-[#1a1625]/40 sm:flex">
+                  <MapPin className="size-3" /> {r.loc}
+                </span>
+              </Link>
+            ))}
+            <Link
+              href="/opportunities"
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-[#1a1625]/5 text-sm font-bold text-primary hover:bg-[#c8f135]/20 transition-colors border-t border-[#1a1625]/10"
+            >
+              See all results <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Quick chips */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {SEARCH_CHIPS.map((c) => (
+          <button
+            key={c}
+            onClick={() => setQ(c)}
+            className="rounded-full border-2 border-[#1a1625]/20 bg-white px-4 py-1.5 text-sm font-semibold text-[#1a1625]/70 transition-all hover:border-[#1a1625] hover:text-[#1a1625] hover:bg-[#c8f135]"
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Trending */}
+      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-[0.15em] text-[#1a1625]/50">
+          <TrendingUp className="size-3.5" /> Popular
+        </span>
+        {TRENDING.map((p) => (
+          <button
+            key={p}
+            onClick={() => setQ(p)}
+            className="font-mono text-xs text-[#1a1625]/55 underline-offset-4 hover:underline hover:text-[#1a1625]"
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function PlatformPreview() {
   return (
@@ -255,6 +358,10 @@ export default function Home() {
                   Youdemonia surfaces local internships, workshops, research, and volunteering —
                   vetted, organized, and completely free for students.
                 </p>
+              </Reveal>
+
+              <Reveal delay={200}>
+                <HeroSearch />
               </Reveal>
 
               <Reveal delay={240}>
